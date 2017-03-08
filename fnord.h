@@ -74,6 +74,8 @@ uint8_t gVal = 0;
 
 uint8_t gBright = BRIGHTNESS;
 
+int hue;
+
 //holds the current upload
 File fsUploadFile;
 
