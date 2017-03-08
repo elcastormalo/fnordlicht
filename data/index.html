@@ -132,6 +132,11 @@ function juggleFn() {
 	var toSend = "JUGGLE";
 	connection.send(toSend); 
 };
+
+function fadeRainbowFn() {
+	var toSend = "FADING_RAINBOW";
+	connection.send(toSend); 
+};
 </script>
     </head>
     <body>
@@ -207,6 +212,8 @@ function juggleFn() {
               <tr>
                 <td><a data-role="button" id="Fire"
                 onclick="fireFn()">Fire</a></td>
+                <td><a data-role="button" id="Fading_Rainbow"
+                onclick="fadeRainbowFn()">Fading Rainbow</a></td>
               </tr>
            </table>
     </body>

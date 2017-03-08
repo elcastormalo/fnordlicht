@@ -74,6 +74,8 @@ uint8_t gVal = 0;
 
 uint8_t gBright = BRIGHTNESS;
 
+int hue;
+
 //holds the current upload
 File fsUploadFile;
 
@@ -265,6 +267,13 @@ void juggle() {
   }
 }
 
+void fading_colors()
+{
+  leds(0, NUM_LEDS - 1) = CHSV(hue, 200, gBright);
+  hue++;
+  hue %= 360;
+}
+
 void blinktest() {
    int prevled= gLedCounter - 1 ;
    if (prevled < 0 ) {
@@ -281,7 +290,7 @@ void blinktest() {
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest };
+SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, fading_colors };
 
 void nextPattern() {
   // add one to the current pattern number, and wrap around at the end
@@ -441,6 +450,13 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           DEBUGGING("Current PAttern #4");
           Antwort = myState();
           webSocket.sendTXT(num, Antwort);
+        }
+        if (text == "FADING_RAINBOW") {
+          DEBUGGING("fading rainbow");
+          gCurrentPatternNumber = 8;
+          DEBUGGING("Current Pattern #8");
+          Antwort = myState();
+          webSocket.sendTXT(num, Antwort);          
         }
         digitalWrite(LED_BUILTIN, HIGH);   // on-board LED off
       }      
