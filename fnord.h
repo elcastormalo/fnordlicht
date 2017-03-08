@@ -271,7 +271,16 @@ void fading_colors()
 {
   leds(0, NUM_LEDS - 1) = CHSV(hue, 200, gBright);
   hue++;
-  hue %= 360;
+  hue %= 255;
+}
+
+void matrix()
+{
+  for(int i = NUM_LEDS-1; i >= 1; i--) 
+  { 
+    leds[i] = leds[i-1];
+  }  
+  leds[0] = CHSV(96, random8(100)+155, random8(200)+55);
 }
 
 void blinktest() {
@@ -290,7 +299,7 @@ void blinktest() {
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, fading_colors };
+SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, fading_colors, matrix };
 
 void nextPattern() {
   // add one to the current pattern number, and wrap around at the end
@@ -315,7 +324,7 @@ String myState() {
   Antwort += ";";
   Antwort += gVal;
   return Antwort;
-}
+} 
 
 // WebSocket Events
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
@@ -455,6 +464,13 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           DEBUGGING("fading rainbow");
           gCurrentPatternNumber = 8;
           DEBUGGING("Current Pattern #8");
+          Antwort = myState();
+          webSocket.sendTXT(num, Antwort);          
+        }
+        if (text == "MATRIX") {
+          DEBUGGING("matrix");
+          gCurrentPatternNumber = 9;
+          DEBUGGING("Current Pattern #9");
           Antwort = myState();
           webSocket.sendTXT(num, Antwort);          
         }
