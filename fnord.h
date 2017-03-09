@@ -23,6 +23,7 @@
 // Tool Download https://github.com/esp8266/arduino-esp8266fs-plugin/releases/download/0.1.3/ESP8266FS-0.1.3.zip.
 // Docs http://esp8266.github.io/Arduino/versions/2.0.0/doc/filesystem.html
 #include "FS.h"
+#include "trains.h"
 
 FASTLED_USING_NAMESPACE
 
@@ -236,7 +237,7 @@ void confetti() {
   // random colored speckles that blink in and fade smoothly
   fadeToBlackBy( leds, NUM_LEDS, 10);
   int pos = random16(NUM_LEDS);
-  leds[pos] += CHSV( gHue + random8(64), 200, 255);
+  leds[pos] += CHSV(random8(255), 200, 255);
 }
 
 void sinelon() {
@@ -280,13 +281,13 @@ void matrix()
   { 
     leds[i] = leds[i-1];
   }  
-  leds[0] = CHSV(96, random8(100)+155, random8(200)+55);
+  leds[0] = CHSV(gHue, random8(100)+155, random8(200)+55);
 }
 
 uint8_t pulse_dir = 1;
 void pulse()
 {
-  leds(0, NUM_LEDS - 1) = CHSV(hue, 200, gBright);
+  leds(0, NUM_LEDS - 1) = CHSV(gHue, 200, gBright);
   gBright += pulse_dir;
   if (gBright >=254)
   {
@@ -295,7 +296,15 @@ void pulse()
   if (gBright <= 0)
   {
     pulse_dir = 1;
-  }  
+  }
+}
+
+Track track = new Track(NUM_LEDS);
+
+void trains()
+{
+  track.step();
+  track.draw(leds);
 }
 
 void blinktest() {
