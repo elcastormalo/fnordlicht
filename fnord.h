@@ -298,6 +298,37 @@ void pulse()
   }  
 }
 
+static uint16_t dist;         // A random number for our noise generator.
+uint16_t scale = 30;          // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
+uint8_t maxChanges = 48;      // Value for blending between palettes.
+ 
+CRGBPalette16 currentPalette(CRGB::Black);
+CRGBPalette16 targetPalette(OceanColors_p);
+
+void fillnoise8() 
+{
+  for(int i = 0; i < NUM_LEDS; i++) 
+  {                                                                        // Just ONE loop to fill up the LED array as all of the pixels change.
+    uint8_t index = inoise8(i*scale, dist+i*scale) % 255;                  // Get a value from the noise function. I'm using both x and y axis.
+    leds[i] = ColorFromPalette(currentPalette, index, 255, LINEARBLEND);   // With that value, look up the 8 bit colour palette value and assign it to the current LED.
+  }
+  dist += beatsin8(10,1, 4);                                               // Moving along the distance (that random number we started out with). Vary it a bit with a sine wave.
+                                                                           // In some sketches, I've used millis() instead of an incremented counter. Works a treat.
+}
+
+void trippy()
+{
+  EVERY_N_MILLISECONDS(10) 
+  {
+    nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);  // Blend towards the target palette
+    fillnoise8();                                                           // Update the LED array with noise at the new location
+  }
+  EVERY_N_SECONDS(5) 
+  {             // Change the target palette to a random one every 5 seconds.
+    targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 192, random8(128,255)), CHSV(random8(), 255, random8(128,255)));
+  }
+}
+
 void blinktest() {
    int prevled= gLedCounter - 1 ;
    if (prevled < 0 ) {
@@ -311,10 +342,9 @@ void blinktest() {
    leds[prevled] = CRGB::Black;
 }
 
-
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, fading_colors, matrix, pulse };
+SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, fading_colors, matrix, pulse, trippy };
 
 void nextPattern() {
   // add one to the current pattern number, and wrap around at the end
@@ -490,6 +520,14 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           DEBUGGING("pulse");
           gCurrentPatternNumber = 10;
           DEBUGGING("Current Pattern #10");
+          Antwort = myState();
+          webSocket.sendTXT(num, Antwort);          
+        }
+        if (text == "TRIPPY") {
+          dist = random16(12345);  
+          DEBUGGING("trippy");
+          gCurrentPatternNumber = 11;
+          DEBUGGING("Current Pattern #11");
           Antwort = myState();
           webSocket.sendTXT(num, Antwort);          
         }
