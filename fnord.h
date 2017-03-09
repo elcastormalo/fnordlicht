@@ -283,6 +283,21 @@ void matrix()
   leds[0] = CHSV(96, random8(100)+155, random8(200)+55);
 }
 
+uint8_t pulse_dir = 1;
+void pulse()
+{
+  leds(0, NUM_LEDS - 1) = CHSV(hue, 200, gBright);
+  gBright += pulse_dir;
+  if (gBright >=254)
+  {
+    pulse_dir = -1;
+  }
+  if (gBright <= 0)
+  {
+    pulse_dir = 1;
+  }  
+}
+
 void blinktest() {
    int prevled= gLedCounter - 1 ;
    if (prevled < 0 ) {
@@ -299,7 +314,7 @@ void blinktest() {
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, fading_colors, matrix };
+SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, fading_colors, matrix, pulse };
 
 void nextPattern() {
   // add one to the current pattern number, and wrap around at the end
@@ -348,15 +363,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         digitalWrite(LED_BUILTIN, LOW);  // built-in LED on um Feddback über empfangene Kommandos zu geben
 
         String text = String((char *) &payload[0]);
-        if (text == "BLINK") {
-          DEBUGGING("blink");
-          gCurrentPatternNumber = 7;
-          DEBUGGING("Current Pattern #7");
-          DEBUGGING(gLedCounter);
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
-        }
-
         if (text.startsWith("r")) {
           String rVal = (text.substring(text.indexOf("r") + 1, text.length()));
           gRed = rVal.toInt();
@@ -417,24 +423,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           //for(int MyLed = 0; MyLed < NUM_LEDS; MyLed = MyLed + 1) {
           //  leds[MyLed] = CRGB::Black;
           //}   
-          leds.fadeToBlackBy(40);                
+          leds.fadeToBlackBy(40);
           DEBUGGING("reset");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
-        }
-        if (text == "RAINBOW") {
-          
-          DEBUGGING("rainbow");
-          gCurrentPatternNumber = 5;
-          DEBUGGING("Current PAttern #5");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
-        }
-        if (text == "STEADY") {
-          
-          DEBUGGING("steadyRGB");
-          gCurrentPatternNumber = 6;
-          DEBUGGING("Current PAttern #6");
           Antwort = myState();
           webSocket.sendTXT(num, Antwort);
         }
@@ -442,21 +432,43 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           
           DEBUGGING("confetti");
           gCurrentPatternNumber = 2;
-          DEBUGGING("Current PAttern #2");
+          DEBUGGING("Current Pattern #2");
           Antwort = myState();
           webSocket.sendTXT(num, Antwort);
         }
-        if (text == "SINELON") {          
+        if (text == "SINELON") {
           DEBUGGING("sinelon");
           gCurrentPatternNumber = 3;
-          DEBUGGING("Current PAttern #3");
+          DEBUGGING("Current Pattern #3");
           Antwort = myState();
           webSocket.sendTXT(num, Antwort);
         }
         if (text == "JUGGLE") {
           DEBUGGING("juggle");
           gCurrentPatternNumber = 4;
-          DEBUGGING("Current PAttern #4");
+          DEBUGGING("Current Pattern #4");
+          Antwort = myState();
+          webSocket.sendTXT(num, Antwort);
+        }
+        if (text == "RAINBOW") {
+          DEBUGGING("rainbow");
+          gCurrentPatternNumber = 5;
+          DEBUGGING("Current Pattern #5");
+          Antwort = myState();
+          webSocket.sendTXT(num, Antwort);
+        }
+        if (text == "STEADY") {
+          DEBUGGING("steadyRGB");
+          gCurrentPatternNumber = 6;
+          DEBUGGING("Current Pattern #6");
+          Antwort = myState();
+          webSocket.sendTXT(num, Antwort);
+        }
+        if (text == "BLINK") {
+          DEBUGGING("blink");
+          gCurrentPatternNumber = 7;
+          DEBUGGING("Current Pattern #7");
+          DEBUGGING(gLedCounter);
           Antwort = myState();
           webSocket.sendTXT(num, Antwort);
         }
@@ -465,12 +477,19 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           gCurrentPatternNumber = 8;
           DEBUGGING("Current Pattern #8");
           Antwort = myState();
-          webSocket.sendTXT(num, Antwort);          
+          webSocket.sendTXT(num, Antwort);
         }
         if (text == "MATRIX") {
           DEBUGGING("matrix");
           gCurrentPatternNumber = 9;
           DEBUGGING("Current Pattern #9");
+          Antwort = myState();
+          webSocket.sendTXT(num, Antwort);
+        }
+        if (text == "PULSE") {
+          DEBUGGING("pulse");
+          gCurrentPatternNumber = 10;
+          DEBUGGING("Current Pattern #10");
           Antwort = myState();
           webSocket.sendTXT(num, Antwort);          
         }
