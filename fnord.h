@@ -23,7 +23,6 @@
 // Tool Download https://github.com/esp8266/arduino-esp8266fs-plugin/releases/download/0.1.3/ESP8266FS-0.1.3.zip.
 // Docs http://esp8266.github.io/Arduino/versions/2.0.0/doc/filesystem.html
 #include "FS.h"
-#include "trains.h"
 
 FASTLED_USING_NAMESPACE
 
@@ -58,6 +57,9 @@ unsigned long lastTimeRefresh = 0;
 int NUM_LEDS=    300;
 //CRGB leds[MAX_LEDS];
 CRGBArray<MAX_LEDS> leds;
+
+#include "trains.h"
+#include "track.h"
 
 #define BRIGHTNESS          165
 #define FRAMES_PER_SECOND  120
@@ -281,7 +283,7 @@ void matrix()
   { 
     leds[i] = leds[i-1];
   }  
-  leds[0] = CHSV(gHue, random8(100)+155, random8(200)+55);
+  leds[0] = CHSV(96, random8(100)+155, random8(200)+55);
 }
 
 uint8_t pulse_dir = 1;
@@ -299,12 +301,12 @@ void pulse()
   }
 }
 
-Track track = new Track(NUM_LEDS);
+Track *track = new Track(NUM_LEDS);
 
 void trains()
 {
-  track.step();
-  track.draw(leds);
+  track->step();
+  track->draw(leds);
 }
 
 static uint16_t dist;         // A random number for our noise generator.
@@ -353,7 +355,7 @@ void blinktest() {
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, fading_colors, matrix, pulse, trippy };
+SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, fading_colors, matrix, pulse, trippy, trains };
 
 void nextPattern() {
   // add one to the current pattern number, and wrap around at the end
@@ -537,6 +539,14 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           DEBUGGING("trippy");
           gCurrentPatternNumber = 11;
           DEBUGGING("Current Pattern #11");
+          Antwort = myState();
+          webSocket.sendTXT(num, Antwort);          
+        }
+        if (text == "TRAINS") {
+          dist = random16(12345);  
+          DEBUGGING("trains");
+          gCurrentPatternNumber = 12;
+          DEBUGGING("Current Pattern #12");
           Antwort = myState();
           webSocket.sendTXT(num, Antwort);          
         }
