@@ -59,7 +59,7 @@ int NUM_LEDS=    300;
 CRGBArray<MAX_LEDS> leds;
 
 #define BRIGHTNESS          165
-#define FRAMES_PER_SECOND  120
+#define FRAMES_PER_SECOND  30
 
 int gLedCounter = 0; // global Led Postition Counter for larger iterative Patterns
 
@@ -236,7 +236,7 @@ void confetti() {
   // random colored speckles that blink in and fade smoothly
   fadeToBlackBy( leds, NUM_LEDS, 10);
   int pos = random16(NUM_LEDS);
-  leds[pos] += CHSV( gHue + random8(64), 200, 255);
+  leds[pos] += CHSV( random8(), 200, 255);
 }
 
 void sinelon() {
@@ -283,19 +283,25 @@ void matrix()
   leds[0] = CHSV(96, random8(100)+155, random8(200)+55);
 }
 
-uint8_t pulse_dir = 1;
+int8_t pulse_dir = 16;
 void pulse()
 {
   leds(0, NUM_LEDS - 1) = CHSV(hue, 200, gBright);
-  gBright += pulse_dir;
-  if (gBright >=254)
+  int b = gBright + pulse_dir;
+  if (b >= 254)
   {
-    pulse_dir = -1;
+    gBright = 254;
+    pulse_dir = -16;
   }
-  if (gBright <= 0)
+  else if (b <= 0)
   {
-    pulse_dir = 1;
-  }  
+    gBright = 0;
+    pulse_dir = 16;
+  }
+  else
+  {
+    gBright += pulse_dir;
+  }
 }
 
 static uint16_t dist;         // A random number for our noise generator.
