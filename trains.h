@@ -24,25 +24,19 @@ Train::Train(uint16_t _position, uint16_t _tracklength)
 	this->r = random8();
 	this->g = random8();
 	this->b = random8();
-	this->speed = random8(4)+1;
+	this->speed = random8(3)+1;
  if (random8() > 128)
  {
-   //this->speed *= -1;
+   this->speed *= -1;
  }
 }
 
 void Train::step()
 {
-  if (position + speed < 0)
-  {
-    this->position = this->NUM_LEDS - this->speed + this->position;
-    this->position %= this->NUM_LEDS;     
-  }
-  else
-  {
-	  this->position += this->speed;
-	  this->position %= this->NUM_LEDS;	
-  }
+  int p = position + speed;
+  if (p<0)
+    p += NUM_LEDS;
+  this->position = p % this->NUM_LEDS;
 }
 
 void Train::draw(struct CRGB leds[])
@@ -59,7 +53,7 @@ void Train::draw(struct CRGB leds[])
   {
     for (int i = 0; i <this->length; i++)
     {
-      uint16_t idx = (this->position - i) % this->NUM_LEDS;
+      uint16_t idx = (this->position + i) % this->NUM_LEDS;
       leds[idx] += CRGB(this->r, this->g, this->b);
     }
   }

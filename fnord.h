@@ -359,9 +359,26 @@ void blinktest() {
    leds[prevled] = CRGB::Black;
 }
 
+void measure()
+{
+  leds(0, NUM_LEDS) = CRGB::Black;
+  leds[0] = CRGB::White;
+  leds[50] = CRGB::Red;
+  leds[100] = CRGB::Green;
+  leds[150] = CRGB::Blue;
+  leds[200] = CRGB::Cyan;
+  leds[250] = CRGB::Yellow;
+  leds[299] = CRGB::White;
+}
+
+void corners()
+{
+  leds(180, 20) = CHDV(96, 255, random8(55)+200);
+}
+
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, fading_colors, matrix, pulse, trippy, trains };
+SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, fading_colors, matrix, pulse, trippy, trains, measure, corners };
 
 void nextPattern() {
   // add one to the current pattern number, and wrap around at the end
@@ -549,10 +566,23 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           webSocket.sendTXT(num, Antwort);          
         }
         if (text == "TRAINS") {
-          dist = random16(12345);  
           DEBUGGING("trains");
           gCurrentPatternNumber = 12;
           DEBUGGING("Current Pattern #12");
+          Antwort = myState();
+          webSocket.sendTXT(num, Antwort);          
+        }
+        if (text == "MEASURE") {
+          DEBUGGING("measure");
+          gCurrentPatternNumber = 13;
+          DEBUGGING("Current Pattern #13");
+          Antwort = myState();
+          webSocket.sendTXT(num, Antwort);          
+        }
+        if (text == "CORNERS") {
+          DEBUGGING("corners");
+          gCurrentPatternNumber = 14;
+          DEBUGGING("Current Pattern #14");
           Antwort = myState();
           webSocket.sendTXT(num, Antwort);          
         }
