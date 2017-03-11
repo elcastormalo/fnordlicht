@@ -58,6 +58,9 @@ int NUM_LEDS=    300;
 //CRGB leds[MAX_LEDS];
 CRGBArray<MAX_LEDS> leds;
 
+#include "trains.h"
+#include "track.h"
+
 #define BRIGHTNESS          165
 #define FRAMES_PER_SECOND  30
 
@@ -304,6 +307,14 @@ void pulse()
   }
 }
 
+Track *track = new Track(NUM_LEDS);
+
+void trains()
+{
+  track->step();
+  track->draw(leds);
+}
+
 static uint16_t dist;         // A random number for our noise generator.
 uint16_t scale = 30;          // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
 uint8_t maxChanges = 48;      // Value for blending between palettes.
@@ -350,7 +361,7 @@ void blinktest() {
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, fading_colors, matrix, pulse, trippy };
+SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, fading_colors, matrix, pulse, trippy, trains };
 
 void nextPattern() {
   // add one to the current pattern number, and wrap around at the end
@@ -534,6 +545,14 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           DEBUGGING("trippy");
           gCurrentPatternNumber = 11;
           DEBUGGING("Current Pattern #11");
+          Antwort = myState();
+          webSocket.sendTXT(num, Antwort);          
+        }
+        if (text == "TRAINS") {
+          dist = random16(12345);  
+          DEBUGGING("trains");
+          gCurrentPatternNumber = 12;
+          DEBUGGING("Current Pattern #12");
           Antwort = myState();
           webSocket.sendTXT(num, Antwort);          
         }
