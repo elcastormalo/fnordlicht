@@ -35,10 +35,10 @@ void Track::step()
 void Track::draw(struct CRGB leds[])
 {
   // clear leds
-  for(int i=0; i< this->NUM_LEDS;i++)
-  {
-    leds[i] = CRGB::Black;
-  }
+//  for(int i=0; i< this->NUM_LEDS;i++)
+//  {
+//    leds[i] = CRGB::Black;
+//  }
   //leds(0, this->NUM_LEDS, CRGB::Black);
   
   // draw each train

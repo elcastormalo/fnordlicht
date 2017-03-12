@@ -67,8 +67,8 @@ CRGBArray<MAX_LEDS> leds;
 int gLedCounter = 0; // global Led Postition Counter for larger iterative Patterns
 
 uint8_t gRed = 254;
-uint8_t gGreen = 140;
-uint8_t gBlue = 107;
+uint8_t gGreen = 254;
+uint8_t gBlue = 100;
 
 uint8_t gCurrentPatternNumber = 0; // Index number of which pattern is current
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
@@ -286,7 +286,7 @@ void matrix()
   leds[0] = CHSV(96, random8(100)+155, random8(200)+55);
 }
 
-int8_t pulse_dir = 16;
+int8_t pulse_dir = 8;
 void pulse()
 {
   leds(0, NUM_LEDS - 1) = CHSV(hue, 200, gBright);
@@ -294,12 +294,14 @@ void pulse()
   if (b >= 254)
   {
     gBright = 254;
-    pulse_dir = -16;
+    pulse_dir = -8;
   }
-  else if (b <= 0)
+  else if (b <= 32)
   {
-    gBright = 0;
-    pulse_dir = 16;
+    gBright = 32;
+    pulse_dir = 8;
+    hue += 16;
+    hue %= 255;
   }
   else
   {
@@ -311,6 +313,14 @@ Track *track = new Track(NUM_LEDS);
 
 void trains()
 {
+  leds( leds, NUM_LEDS) = CRGB::Black;
+  track->step();
+  track->draw(leds);
+}
+
+void trains2()  // like trains, but the wagons have a tail
+{
+  fadeToBlackBy( leds, NUM_LEDS, 128);
   track->step();
   track->draw(leds);
 }
@@ -346,6 +356,69 @@ void trippy()
   }
 }
 
+
+int offset = 0;
+void setupSinewave()
+{
+  offset++;
+  offset %= 6;  
+  for(int i=0; i<NUM_LEDS; i++)
+  {
+    leds[i] = CHSV(hue, 200, sin((i+offset)*45) * 127 + 128);
+  }
+}
+
+void setupSinewaveColor()
+{
+  offset++;
+  offset %= 6;  
+  hue = 0;
+  for(int i=0; i<NUM_LEDS; i++)
+  {
+    if ((i + offset) % 6 == 0)
+    {
+      hue += 16;
+      hue %= 255;
+    }
+    leds[i] = CHSV(hue, 200, sin((i+offset)*45) * 127 + 128);
+  }
+}
+
+void sinewave()
+{
+  CRGB c = leds[NUM_LEDS-1];
+  for(int i = NUM_LEDS-1; i >= 1; i--) 
+  { 
+    leds[i] = leds[i-1];
+  }  
+  leds[0] = c;
+}
+
+uint8_t sineHue=0;
+
+void sinewave_color()
+{
+  CRGB c = leds[NUM_LEDS-1];
+  for(int i = NUM_LEDS-1; i >= 1; i--) 
+  { 
+    leds[i] = leds[i-1];
+  }  
+  leds[0] = c;
+
+//  offset++;
+//  offset %= 6;
+//  sineHue = 0;
+//  for(int i=0; i<NUM_LEDS; i++)
+//  {
+//    if ((i + offset) % 6 == 0)
+//    {
+//      sineHue += 16;
+//      sineHue %= 255;
+//    }
+//    leds[i] = CHSV(sineHue, 200, sin((i+offset)*45) * 127 + 128);
+//  }
+}
+
 void blinktest() {
    int prevled= gLedCounter - 1 ;
    if (prevled < 0 ) {
@@ -373,12 +446,16 @@ void measure()
 
 void corners()
 {
-  leds(180, 20) = CHDV(96, 255, random8(55)+200);
+  leds(0, NUM_LEDS) = CRGB::Black;
+  leds(0, 20) = CHSV(96, 255, random8(55)+200);
+  leds(180, 200) = CHSV(96, 255, random8(55)+200);
+  leds(280, NUM_LEDS) = CHSV(96, 255, random8(55)+200);
 }
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, fading_colors, matrix, pulse, trippy, trains, measure, corners };
+SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, 
+                                fading_colors, matrix, pulse, trippy, trains, measure, corners, trains2, sinewave, sinewave_color };
 
 void nextPattern() {
   // add one to the current pattern number, and wrap around at the end
@@ -583,6 +660,29 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           DEBUGGING("corners");
           gCurrentPatternNumber = 14;
           DEBUGGING("Current Pattern #14");
+          Antwort = myState();
+          webSocket.sendTXT(num, Antwort);          
+        }
+        if (text == "TRAINS2") {
+          DEBUGGING("trains2");
+          gCurrentPatternNumber = 15;
+          DEBUGGING("Current Pattern #15");
+          Antwort = myState();
+          webSocket.sendTXT(num, Antwort);          
+        }
+        if (text == "SINEWAVE") {
+          DEBUGGING("sinewave");
+          setupSinewave();
+          gCurrentPatternNumber = 16;
+          DEBUGGING("Current Pattern #16");
+          Antwort = myState();
+          webSocket.sendTXT(num, Antwort);          
+        }
+        if (text == "SINEWAVE_COLOR") {
+          DEBUGGING("sinewave_color");
+          setupSinewaveColor();
+          gCurrentPatternNumber = 17;
+          DEBUGGING("Current Pattern #17");
           Antwort = myState();
           webSocket.sendTXT(num, Antwort);          
         }
