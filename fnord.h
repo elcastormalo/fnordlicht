@@ -210,7 +210,6 @@ void handleFileList() {
 
 //FASTLED DEFS
 void steadyRGB() {
-   //leds[gLedCounter] = CRGB(gRed,gGreen,gBlue);
    leds(0,NUM_LEDS - 1) = CRGB(gRed,gGreen,gBlue);
 }
 
@@ -272,6 +271,7 @@ void juggle() {
 
 void fading_colors()
 {
+  // 
   leds(0, NUM_LEDS - 1) = CHSV(hue, 200, gBright);
   hue++;
   hue %= 255;
@@ -279,6 +279,7 @@ void fading_colors()
 
 void matrix()
 {
+  // different shaded of green are pushed doen the strip
   for(int i = NUM_LEDS-1; i >= 1; i--) 
   { 
     leds[i] = leds[i-1];
@@ -289,6 +290,7 @@ void matrix()
 int8_t pulse_dir = 8;
 void pulse()
 {
+  // brightness goes slowly from dark to bright, color changes slightly everytime it's dark
   leds(0, NUM_LEDS - 1) = CHSV(hue, 200, gBright);
   int b = gBright + pulse_dir;
   if (b >= 254)
@@ -296,7 +298,7 @@ void pulse()
     gBright = 254;
     pulse_dir = -8;
   }
-  else if (b <= 32)
+  else if (b <= 32) // minimum brightness, to reduce time without any light
   {
     gBright = 32;
     pulse_dir = 8;
@@ -313,6 +315,7 @@ Track *track = new Track(NUM_LEDS);
 
 void trains()
 {
+  // Trains of random length, color and speed drive around, if trains are in the same position, their rgb values are added
   leds( leds, NUM_LEDS) = CRGB::Black;
   track->step();
   track->draw(leds);
@@ -404,19 +407,6 @@ void sinewave_color()
     leds[i] = leds[i-1];
   }  
   leds[0] = c;
-
-//  offset++;
-//  offset %= 6;
-//  sineHue = 0;
-//  for(int i=0; i<NUM_LEDS; i++)
-//  {
-//    if ((i + offset) % 6 == 0)
-//    {
-//      sineHue += 16;
-//      sineHue %= 255;
-//    }
-//    leds[i] = CHSV(sineHue, 200, sin((i+offset)*45) * 127 + 128);
-//  }
 }
 
 void blinktest() {
@@ -426,14 +416,13 @@ void blinktest() {
    }
    // Turn our current led on
    leds[gLedCounter] = CRGB::White;
-   // Wait a little bit
-   //delay(100);
    // Turn our current led back to black for the next loop around
    leds[prevled] = CRGB::Black;
 }
 
 void measure()
 {
+  // used to show where which leds are at what position in the room. will be used for CORNERS-effect
   leds(0, NUM_LEDS) = CRGB::Black;
   leds[0] = CRGB::White;
   leds[50] = CRGB::Red;
@@ -446,6 +435,7 @@ void measure()
 
 void corners()
 {
+  // corners will light up and shoot different effects between them
   leds(0, NUM_LEDS) = CRGB::Black;
   leds(0, 20) = CHSV(96, 255, random8(55)+200);
   leds(180, 200) = CHSV(96, 255, random8(55)+200);
@@ -501,192 +491,111 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
     case WStype_TEXT:
       {
         lastTimeRefresh = millis();
-        digitalWrite(LED_BUILTIN, LOW);  // built-in LED on um Feddback über empfangene Kommandos zu geben
+        digitalWrite(LED_BUILTIN, LOW);  // built-in LED on um Feedback über empfangene Kommandos zu geben
 
         String text = String((char *) &payload[0]);
         if (text.startsWith("r")) {
           String rVal = (text.substring(text.indexOf("r") + 1, text.length()));
           gRed = rVal.toInt();
           DEBUGGING(gRed);
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
         }
-
         if (text.startsWith("g")) {
           String gVal = (text.substring(text.indexOf("g") + 1, text.length()));
           gGreen = gVal.toInt();
           DEBUGGING(gGreen);
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
         }
-
         if (text.startsWith("b")) {
           String bVal = (text.substring(text.indexOf("b") + 1, text.length()));
           gBlue = bVal.toInt();             
           DEBUGGING(gBlue);
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
         }
-
         if (text.startsWith("h")) {
           String hVal = (text.substring(text.indexOf("h") + 1, text.length()));
           gHue = hVal.toInt();
           DEBUGGING(gHue);
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
         }
-
         if (text.startsWith("s")) {
           String sVal = (text.substring(text.indexOf("s") + 1, text.length()));
           gSat = sVal.toInt();
           DEBUGGING(gSat);
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
         }
-
         if (text.startsWith("v")) {
           String vVal = (text.substring(text.indexOf("v") + 1, text.length()));
           gVal = vVal.toInt();             
           DEBUGGING(gVal);
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
         }
-
         if (text.startsWith("m")) {
           String mVal = (text.substring(text.indexOf("m") + 1, text.length()));
           gBright = mVal.toInt();
           FastLED.setBrightness(gBright);
           DEBUGGING(gBright);
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
         }        
+        DEBUGGING(text);
         if (text == "RESET") {
-          //for(int MyLed = 0; MyLed < NUM_LEDS; MyLed = MyLed + 1) {
-          //  leds[MyLed] = CRGB::Black;
-          //}   
           leds.fadeToBlackBy(40);
-          DEBUGGING("reset");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
-        }
-        if (text == "CONFETTI") {
-          
-          DEBUGGING("confetti");
-          gCurrentPatternNumber = 2;
-          DEBUGGING("Current Pattern #2");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
-        }
-        if (text == "SINELON") {
-          DEBUGGING("sinelon");
-          gCurrentPatternNumber = 3;
-          DEBUGGING("Current Pattern #3");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
-        }
-        if (text == "JUGGLE") {
-          DEBUGGING("juggle");
-          gCurrentPatternNumber = 4;
-          DEBUGGING("Current Pattern #4");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
         }
         if (text == "RAINBOW") {
-          DEBUGGING("rainbow");
+          gCurrentPatternNumber = 0;
+        }
+        if (text == "RAIONBOW_GLITTER") {
+          gCurrentPatternNumber = 1;
+        }
+        if (text == "CONFETTI") {
+          gCurrentPatternNumber = 2;
+        }
+        if (text == "SINELON") {
+          gCurrentPatternNumber = 3;
+        }
+        if (text == "JUGGLE") {
+          gCurrentPatternNumber = 4;
+        }
+        if (text == "BPM") {
           gCurrentPatternNumber = 5;
-          DEBUGGING("Current Pattern #5");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
         }
         if (text == "STEADY") {
-          DEBUGGING("steadyRGB");
           gCurrentPatternNumber = 6;
-          DEBUGGING("Current Pattern #6");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
         }
         if (text == "BLINK") {
-          DEBUGGING("blink");
           gCurrentPatternNumber = 7;
-          DEBUGGING("Current Pattern #7");
           DEBUGGING(gLedCounter);
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
         }
         if (text == "FADING_RAINBOW") {
-          DEBUGGING("fading rainbow");
           gCurrentPatternNumber = 8;
-          DEBUGGING("Current Pattern #8");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
         }
         if (text == "MATRIX") {
-          DEBUGGING("matrix");
           gCurrentPatternNumber = 9;
-          DEBUGGING("Current Pattern #9");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);
         }
         if (text == "PULSE") {
-          DEBUGGING("pulse");
           gCurrentPatternNumber = 10;
-          DEBUGGING("Current Pattern #10");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);          
         }
         if (text == "TRIPPY") {
           dist = random16(12345);  
-          DEBUGGING("trippy");
           gCurrentPatternNumber = 11;
-          DEBUGGING("Current Pattern #11");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);          
         }
         if (text == "TRAINS") {
-          DEBUGGING("trains");
           gCurrentPatternNumber = 12;
-          DEBUGGING("Current Pattern #12");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);          
         }
         if (text == "MEASURE") {
-          DEBUGGING("measure");
           gCurrentPatternNumber = 13;
-          DEBUGGING("Current Pattern #13");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);          
         }
         if (text == "CORNERS") {
-          DEBUGGING("corners");
           gCurrentPatternNumber = 14;
-          DEBUGGING("Current Pattern #14");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);          
         }
         if (text == "TRAINS2") {
-          DEBUGGING("trains2");
           gCurrentPatternNumber = 15;
-          DEBUGGING("Current Pattern #15");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);          
         }
         if (text == "SINEWAVE") {
-          DEBUGGING("sinewave");
           setupSinewave();
           gCurrentPatternNumber = 16;
-          DEBUGGING("Current Pattern #16");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);          
         }
         if (text == "SINEWAVE_COLOR") {
-          DEBUGGING("sinewave_color");
           setupSinewaveColor();
           gCurrentPatternNumber = 17;
-          DEBUGGING("Current Pattern #17");
-          Antwort = myState();
-          webSocket.sendTXT(num, Antwort);          
         }
+        DEBUGGING(gCurrentPatternNumber);
         digitalWrite(LED_BUILTIN, HIGH);   // on-board LED off
+        Antwort = myState();
+        webSocket.sendTXT(num, Antwort);
       }      
       break;
     
@@ -739,10 +648,6 @@ void MDNSConnect() {
   MDNS.addService("ws", "tcp", 81);
   MDNS.addService("http", "tcp", 80);
 }
-
-
-
-
 
 // HTTP updater connection
 void HTTPUpdateConnect() {
