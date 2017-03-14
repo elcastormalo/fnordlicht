@@ -404,19 +404,6 @@ void sinewave_color()
     leds[i] = leds[i-1];
   }  
   leds[0] = c;
-
-//  offset++;
-//  offset %= 6;
-//  sineHue = 0;
-//  for(int i=0; i<NUM_LEDS; i++)
-//  {
-//    if ((i + offset) % 6 == 0)
-//    {
-//      sineHue += 16;
-//      sineHue %= 255;
-//    }
-//    leds[i] = CHSV(sineHue, 200, sin((i+offset)*45) * 127 + 128);
-//  }
 }
 
 void blinktest() {
@@ -426,9 +413,6 @@ void blinktest() {
    }
    // Turn our current led on
    leds[gLedCounter] = CRGB::White;
-   // Wait a little bit
-   //delay(100);
-   // Turn our current led back to black for the next loop around
    leds[prevled] = CRGB::Black;
 }
 
