@@ -93,6 +93,11 @@ function rainbowFn() {
    connection.send(toSend); 
 };
 
+function rainbowGlitterFn() {
+   var toSend = "RAINBOW_GLITTER";
+   connection.send(toSend); 
+};
+
 function blinkFn() {
 	var toSend = "BLINK";
 	connection.send(toSend); 
@@ -109,12 +114,27 @@ function steadyFn() {
 };
 
 function steadyhsvFn() {
-	var toSend = "STEADYHSV";
+	var toSend = "STEADY_HSV";
 	connection.send(toSend); 
 };
 
-function fireFn() {
-	var toSend = "FIRE";
+function sinewaveFn() {
+	var toSend = "SINEWAVE";
+	connection.send(toSend); 
+};
+
+function sinewaveColorFn() {
+	var toSend = "SINEWAVE_COLOR";
+	connection.send(toSend); 
+};
+
+function trainsFn() {
+	var toSend = "TRAINS";
+	connection.send(toSend); 
+};
+
+function trains2Fn() {
+	var toSend = "TRAINS2";
 	connection.send(toSend); 
 };
 
@@ -135,6 +155,26 @@ function juggleFn() {
 
 function fadeRainbowFn() {
 	var toSend = "FADING_RAINBOW";
+	connection.send(toSend); 
+};
+
+function pulseFn() {
+	var toSend = "PULSE";
+	connection.send(toSend); 
+};
+
+function matrixFn() {
+	var toSend = "MATRIX";
+	connection.send(toSend); 
+};
+
+function cornersFn() {
+	var toSend = "CORNERS";
+	connection.send(toSend); 
+};
+
+function trippyFn() {
+	var toSend = "TRIPPY";
 	connection.send(toSend); 
 };
 </script>
@@ -181,40 +221,35 @@ function fadeRainbowFn() {
                 </td>
 	     </tr>
 	     <tr>
-                <td>
-                        <a data-role="button" id="Steady" onclick="steadyFn()">Steady</a>
-		</td>
-             </tr>
+            <td><a data-role="button" id="Steady" onclick="steadyFn()">Steady RGB</a></td>
+            <td><a data-role="button" id="SteadyHSV" onclick="steadyhsvFn()">Steady HSV</a></td>
+		 </tr>
 	     <tr>
-	        <td><a data-role="button" id="Blink"
-	        onclick="blinkFn()">Blink</a></td>
-                <td><a data-role="button" id="Reset"
-	        onclick="resetFn()">Reset</a></td>
+	        <td><a data-role="button" id="Blink" onclick="blinkFn()">Blink</a></td>
+        	<td><a data-role="button" id="Reset" onclick="resetFn()">Reset</a></td>
 	     </tr>
 	     <tr>
-                <td><a data-role="button" id="Reset"
-                onclick="resetFn()">Reset</a></td>
-                <td><a data-role="button" id="Rainbow"
-                onclick="rainbowFn()">Rainbow</a></td>
-              </tr>
-              <tr>
-                <td><a data-role="button" id="Confetti"
-                onclick="confettiFn()">Confetti</a></td>
-                <td><a data-role="button" id="Sinelon"
-                onclick="sinelonFn()">Sinelon</a></td>
-              </tr>
-              <tr>
-                <td><a data-role="button" id="Juggle"
-                onclick="juggleFn()">Juggle</a></td>
-                <td><a data-role="button" id="HSV"
-                onclick="steadyhsvFn()">HSV</a></td>
-              </tr>
-              <tr>
-                <td><a data-role="button" id="Fire"
-                onclick="fireFn()">Fire</a></td>
-                <td><a data-role="button" id="Fading_Rainbow"
-                onclick="fadeRainbowFn()">Fading Rainbow</a></td>
-              </tr>
+            <td><a data-role="button" id="Rainbow" onclick="rainbowFn()">Rainbow</a></td>
+            <td><a data-role="button" id="RainbowGlitter" onclick="rainbowGlitterFn()">Rainbow with Glitter</a></td>
+            <td><a data-role="button" id="Sinewave" onclick="sinewaveFn()">Sinewave</a></td>
+            <td><a data-role="button" id="SinewaveColor" onclick="sinewaveColorFn()">Rainbow Sinewave</a></td>
+         </tr>
+         <tr>
+            <td><a data-role="button" id="Confetti" onclick="confettiFn()">Confetti</a></td>
+            <td><a data-role="button" id="Sinelon" onclick="sinelonFn()">Sinelon</a></td>
+            <td><a data-role="button" id="Juggle" onclick="juggleFn()">Juggle</a></td>
+         </tr>
+         <tr>
+            <td><a data-role="button" id="Trains" onclick="trainsFn()">Trains</a></td>
+            <td><a data-role="button" id="Trains2" onclick="trains2Fn()">Trains2</a></td>
+            <td><a data-role="button" id="Corners" onclick="cornersFn()">Corners</a></td>
+         </tr>
+         <tr>
+            <td><a data-role="button" id="Matrix" onclick="matrixFn()">Matrix</a></td>
+            <td><a data-role="button" id="Fading_Rainbow" onclick="fadeRainbowFn()">Fading Rainbow</a></td>
+            <td><a data-role="button" id="Pulse" onclick="pulseFn()">Pulse</a></td>
+            <td><a data-role="button" id="Trippy" onclick="trippyFn()">LSD</a></td>
+         </tr>
            </table>
     </body>
 </html>
