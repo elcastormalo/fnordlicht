@@ -5,36 +5,44 @@
 #define DEBUGGING_L(...)
 #endif
 
+#define SSID_ME "fnordeingang"
+#define PW_ME "R112Zr11ch3353burger"
+#define HOST_ME "fnordlicht"
+
+#define DATA_PIN_STRIP_ONE    1
+#define DATA_PIN_STRIP_TWO    2
+#define LED_TYPE    WS2811
+#define COLOR_ORDER GRB
+#define MAX_LEDS    300
+int NUM_LEDS=    300;
+#define BRIGHTNESS          165   // initial brightness
+#define FRAMES_PER_SECOND  30
+
+#define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
+
 #include <ESP8266WiFi.h>
-//#include <WiFiClient.h>
 #include <DNSServer.h>            //Local DNS Server used for redirecting all requests to the configuration portal
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
-#include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
 #include <ESP8266HTTPUpdateServer.h>
 #define FASTLED_INTERNAL
 #include <FastLED.h>
 #include <Arduino.h>
 #include <WebSocketsServer.h>
-//#include <WebSocketsClient.h>
 #include <Hash.h>
+#include "trains.h"
+#include "track.h"
 
-// Filesystem
-// Tool Download https://github.com/esp8266/arduino-esp8266fs-plugin/releases/download/0.1.3/ESP8266FS-0.1.3.zip.
-// Docs http://esp8266.github.io/Arduino/versions/2.0.0/doc/filesystem.html
-#include "FS.h"
+//includen wir erst weiter unten, weil es einige Funktionen bracuht. Kack Arduino IDE. 
+//// Filesystem
+//// Tool Download https://github.com/esp8266/arduino-esp8266fs-plugin/releases/download/0.1.3/ESP8266FS-0.1.3.zip.
+//// Docs http://esp8266.github.io/Arduino/versions/2.0.0/doc/filesystem.html
+//#include "FS.h"//holds the current upload
+//#include "filemanager.h"
 
 FASTLED_USING_NAMESPACE
 
-#define SSID_ME "fnordeingang"
-#define PW_ME "R112Zr11ch3353burger"
-//#define SSID_ME "beaver"
-//#define PW_ME "959143eab3"
-#define HOST_ME "fnordlicht"
-
 //Globals
 WebSocketsServer webSocket = WebSocketsServer(81);
-//WebSocketsClient webSocketCl;
 ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 const char* host = HOST_ME;
@@ -43,26 +51,12 @@ const char* password = PW_ME;
 unsigned long lastTimeHost = 0;
 unsigned long lastTimeRefresh = 0;
 
-#define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
-
 #if defined(FASTLED_VERSION) && (FASTLED_VERSION < 3001000)
 #warning "Requires FastLED 3.1 or later; check github for latest code."
 #endif
 
-#define DATA_PIN_STRIP_ONE    1
-#define DATA_PIN_STRIP_TWO    2
-#define LED_TYPE    WS2811
-#define COLOR_ORDER GRB
-#define MAX_LEDS    300
-int NUM_LEDS=    300;
-//CRGB leds[MAX_LEDS];
+// LED Array
 CRGBArray<MAX_LEDS> leds;
-
-#include "trains.h"
-#include "track.h"
-
-#define BRIGHTNESS          165
-#define FRAMES_PER_SECOND  30
 
 int gLedCounter = 0; // global Led Postition Counter for larger iterative Patterns
 
@@ -77,171 +71,50 @@ uint8_t gVal = 0;
 
 uint8_t gBright = BRIGHTNESS;
 
-int hue;
 
-//holds the current upload
-File fsUploadFile;
-
-//format bytes
-String formatBytes(size_t bytes){
-  if (bytes < 1024){
-    return String(bytes)+"B";
-  } else if(bytes < (1024 * 1024)){
-    return String(bytes/1024.0)+"KB";
-  } else if(bytes < (1024 * 1024 * 1024)){
-    return String(bytes/1024.0/1024.0)+"MB";
-  } else {
-    return String(bytes/1024.0/1024.0/1024.0)+"GB";
-  }
-}
-
-String getContentType(String filename){
-  if(httpServer.hasArg("download")) return "application/octet-stream";
-  else if(filename.endsWith(".htm")) return "text/html";
-  else if(filename.endsWith(".html")) return "text/html";
-  else if(filename.endsWith(".css")) return "text/css";
-  else if(filename.endsWith(".js")) return "application/javascript";
-  else if(filename.endsWith(".png")) return "image/png";
-  else if(filename.endsWith(".gif")) return "image/gif";
-  else if(filename.endsWith(".jpg")) return "image/jpeg";
-  else if(filename.endsWith(".ico")) return "image/x-icon";
-  else if(filename.endsWith(".xml")) return "text/xml";
-  else if(filename.endsWith(".pdf")) return "application/x-pdf";
-  else if(filename.endsWith(".zip")) return "application/x-zip";
-  else if(filename.endsWith(".gz")) return "application/x-gzip";
-  return "text/plain";
-}
-
-bool handleFileRead(String path){
-  DEBUGGING("handleFileRead: " + path);
-  if(path.endsWith("/")) path += "index.html";
-  String contentType = getContentType(path);
-  String pathWithGz = path + ".gz";
-  if(SPIFFS.exists(pathWithGz) || SPIFFS.exists(path)){
-    if(SPIFFS.exists(pathWithGz))
-      path += ".gz";
-    File file = SPIFFS.open(path, "r");
-    size_t sent = httpServer.streamFile(file, contentType);
-    file.close();
-    return true;
-  }
-  return false;
-}
-
-void handleFileUpload(){
-  if(httpServer.uri() != "/edit") return;
-  HTTPUpload& upload = httpServer.upload();
-  if(upload.status == UPLOAD_FILE_START){
-    String filename = upload.filename;
-    if(!filename.startsWith("/")) filename = "/"+filename;
-    //DBG_OUTPUT_PORT.print("handleFileUpload Name: "); DBG_OUTPUT_PORT.println(filename);
-    fsUploadFile = SPIFFS.open(filename, "w");
-    filename = String();
-  } else if(upload.status == UPLOAD_FILE_WRITE){
-    //DBG_OUTPUT_PORT.print("handleFileUpload Data: "); DBG_OUTPUT_PORT.println(upload.currentSize);
-    if(fsUploadFile)
-      fsUploadFile.write(upload.buf, upload.currentSize);
-  } else if(upload.status == UPLOAD_FILE_END){
-    if(fsUploadFile)
-      fsUploadFile.close();
-    //DBG_OUTPUT_PORT.print("handleFileUpload Size: "); DBG_OUTPUT_PORT.println(upload.totalSize);
-  }
-}
-
-void handleFileDelete(){
-  if(httpServer.args() == 0) return httpServer.send(500, "text/plain", "BAD ARGS");
-  String path = httpServer.arg(0);
-  //DBG_OUTPUT_PORT.println("handleFileDelete: " + path);
-  if(path == "/")
-    return httpServer.send(500, "text/plain", "BAD PATH");
-  if(!SPIFFS.exists(path))
-    return httpServer.send(404, "text/plain", "FileNotFound");
-  SPIFFS.remove(path);
-  httpServer.send(200, "text/plain", "");
-  path = String();
-}
-
-void handleFileCreate(){
-  if(httpServer.args() == 0)
-    return httpServer.send(500, "text/plain", "BAD ARGS");
-  String path = httpServer.arg(0);
-  //DBG_OUTPUT_PORT.println("handleFileCreate: " + path);
-  if(path == "/")
-    return httpServer.send(500, "text/plain", "BAD PATH");
-  if(SPIFFS.exists(path))
-    return httpServer.send(500, "text/plain", "FILE EXISTS");
-  File file = SPIFFS.open(path, "w");
-  if(file)
-    file.close();
-  else
-    return httpServer.send(500, "text/plain", "CREATE FAILED");
-  httpServer.send(200, "text/plain", "");
-  path = String();
-}
-
-void handleFileList() {
-  if(!httpServer.hasArg("dir")) {
-    httpServer.send(500, "text/plain", "BAD ARGS for "); 
-    return;
-  }
-  
-  String path = httpServer.arg("dir");
-  //DBG_OUTPUT_PORT.println("handleFileList: " + path);
-  Dir dir = SPIFFS.openDir(path);
-  path = String();
-
-  String output = "[";
-  while(dir.next()){
-    File entry = dir.openFile("r");
-    if (output != "[") output += ',';
-    bool isDir = false;
-    output += "{\"type\":\"";
-    output += (isDir)?"dir":"file";
-    output += "\",\"name\":\"";
-    output += String(entry.name()).substring(1);
-    output += "\"}";
-    entry.close();
-  }
-  
-  output += "]";
-  httpServer.send(200, "text/json", output);
-}
-
-
-//FASTLED DEFS
-void steadyRGB() {
+// LED Musterfunktionen
+// In SimplePatternList gPatterns eintragen und über die Position als gCurrentPatternNumber ansprechen
+void steadyRGB() 
+{
    leds(0,NUM_LEDS - 1) = CRGB(gRed,gGreen,gBlue);
 }
 
-void steadyHSV() {
+void steadyHSV()
+{
    leds[gLedCounter]= CHSV( gHue, gSat, gVal);
 }
 
-void rainbow() {
+void rainbow()
+{
   // FastLED's built-in rainbow generator
   fill_rainbow( leds, NUM_LEDS, gHue, 7);
 }
 
-void addGlitter( fract8 chanceOfGlitter)  {
-  if( random8() < chanceOfGlitter) {
+void addGlitter( fract8 chanceOfGlitter)
+{
+  if( random8() < chanceOfGlitter)
+  {
     leds[ random16(NUM_LEDS) ] += CRGB::White;
   }
 }
 
-void rainbowWithGlitter() {
+void rainbowWithGlitter() 
+{
   // built-in FastLED rainbow, plus some random sparkly glitter
   rainbow();
   addGlitter(80);
 }
 
-void confetti() {
+void confetti() 
+{
   // random colored speckles that blink in and fade smoothly
   fadeToBlackBy( leds, NUM_LEDS, 10);
   int pos = random16(NUM_LEDS);
   leds[pos] += CHSV( random8(), 200, 255);
 }
 
-void sinelon() {
+void sinelon() 
+{
   // a colored dot sweeping back and forth, with fading trails
   fadeToBlackBy( leds, NUM_LEDS, 20);
   int pos = beatsin16(13,0,NUM_LEDS);
@@ -259,7 +132,8 @@ void bpm()
   }
 }
 
-void juggle() {
+void juggle() 
+{
   // eight colored dots, weaving in and out of sync with each other
   fadeToBlackBy( leds, NUM_LEDS, 20);
   byte dothue = 0;
@@ -272,9 +146,9 @@ void juggle() {
 void fading_colors()
 {
   // 
-  leds(0, NUM_LEDS - 1) = CHSV(hue, 200, gBright);
-  hue++;
-  hue %= 255;
+  leds(0, NUM_LEDS - 1) = CHSV(gHue, 200, gBright);
+  gHue++;
+  gHue %= 255;
 }
 
 void matrix()
@@ -291,7 +165,7 @@ int8_t pulse_dir = 8;
 void pulse()
 {
   // brightness goes slowly from dark to bright, color changes slightly everytime it's dark
-  leds(0, NUM_LEDS - 1) = CHSV(hue, 200, gBright);
+  leds(0, NUM_LEDS - 1) = CHSV(gHue, 200, gBright);
   int b = gBright + pulse_dir;
   if (b >= 254)
   {
@@ -302,8 +176,8 @@ void pulse()
   {
     gBright = 32;
     pulse_dir = 8;
-    hue += 16;
-    hue %= 255;
+    gHue += 16;
+    gHue %= 255;
   }
   else
   {
@@ -367,7 +241,7 @@ void setupSinewave()
   offset %= 6;  
   for(int i=0; i<NUM_LEDS; i++)
   {
-    leds[i] = CHSV(hue, 200, sin((i+offset)*45) * 127 + 128);
+    leds[i] = CHSV(gHue, 200, sin((i+offset)*45) * 127 + 128);
   }
 }
 
@@ -375,15 +249,15 @@ void setupSinewaveColor()
 {
   offset++;
   offset %= 6;  
-  hue = 0;
+  gHue = 0;
   for(int i=0; i<NUM_LEDS; i++)
   {
     if ((i + offset) % 6 == 0)
     {
-      hue += 16;
-      hue %= 255;
+      gHue += 16;
+      gHue %= 255;
     }
-    leds[i] = CHSV(hue, 200, sin((i+offset)*45) * 127 + 128);
+    leds[i] = CHSV(gHue, 200, sin((i+offset)*45) * 127 + 128);
   }
 }
 
@@ -441,12 +315,17 @@ void corners()
   leds(280, NUM_LEDS) = CHSV(96, 255, random8(55)+200);
 }
 
+
+
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
 SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, 
                                 fading_colors, matrix, pulse, trippy, trains, measure, corners, trains2, sinewave, sinewave_color, steadyHSV };
 
-void nextPattern() {
+// Nicht LED Muster Funktionen
+
+void nextPattern()
+{
   // add one to the current pattern number, and wrap around at the end
   gCurrentPatternNumber = (gCurrentPatternNumber + 1) % ARRAY_SIZE( gPatterns);
 }
@@ -472,9 +351,11 @@ String myState() {
 } 
 
 // WebSocket Events
+// "Befehle" der Webseite (websocket) verarbeiten
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
   String Antwort = "";
-  switch (type) {
+  switch (type)
+  {
     case WStype_DISCONNECTED:
       break;
     case WStype_CONNECTED:
@@ -493,43 +374,42 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         digitalWrite(LED_BUILTIN, LOW);  // built-in LED on um Feedback über empfangene Kommandos zu geben
 
         String text = String((char *) &payload[0]);
-        if (text.startsWith("r")) {
+        if (text.startsWith("r")) 
+        {
           String rVal = (text.substring(text.indexOf("r") + 1, text.length()));
           gRed = rVal.toInt();
-          DEBUGGING(gRed);
         }
-        if (text.startsWith("g")) {
+        if (text.startsWith("g")) 
+        {
           String gVal = (text.substring(text.indexOf("g") + 1, text.length()));
           gGreen = gVal.toInt();
-          DEBUGGING(gGreen);
         }
-        if (text.startsWith("b")) {
+        if (text.startsWith("b")) 
+        {
           String bVal = (text.substring(text.indexOf("b") + 1, text.length()));
           gBlue = bVal.toInt();             
-          DEBUGGING(gBlue);
         }
-        if (text.startsWith("h")) {
+        if (text.startsWith("h")) 
+        {
           String hVal = (text.substring(text.indexOf("h") + 1, text.length()));
           gHue = hVal.toInt();
-          DEBUGGING(gHue);
         }
-        if (text.startsWith("s")) {
+        if (text.startsWith("s")) 
+        {
           String sVal = (text.substring(text.indexOf("s") + 1, text.length()));
           gSat = sVal.toInt();
-          DEBUGGING(gSat);
         }
-        if (text.startsWith("v")) {
+        if (text.startsWith("v")) 
+        {
           String vVal = (text.substring(text.indexOf("v") + 1, text.length()));
           gVal = vVal.toInt();             
-          DEBUGGING(gVal);
         }
-        if (text.startsWith("m")) {
+        if (text.startsWith("m")) 
+        {
           String mVal = (text.substring(text.indexOf("m") + 1, text.length()));
           gBright = mVal.toInt();
           FastLED.setBrightness(gBright);
-          DEBUGGING(gBright);
         }        
-        DEBUGGING(text);
         if (text == "RESET") {
           leds.fadeToBlackBy(40);
         }
@@ -556,7 +436,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         }
         if (text == "BLINK") {
           gCurrentPatternNumber = 7;
-          DEBUGGING(gLedCounter);
         }
         if (text == "FADING_RAINBOW") {
           gCurrentPatternNumber = 8;
@@ -594,7 +473,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         if (text == "STEADY_HSV") {
           gCurrentPatternNumber = 18;
         }
-        DEBUGGING(gCurrentPatternNumber);
         digitalWrite(LED_BUILTIN, HIGH);   // on-board LED off
         Antwort = myState();
         webSocket.sendTXT(num, Antwort);
@@ -611,55 +489,35 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 
 
 // Wifi Connection
+// Wifi Connection initialisieren
 void WifiConnect() {
-
-  //WiFi.mode(WIFI_AP_STA);
-  //WiFi.softAPdisconnect(true);
-  DEBUGGING_L("Connecting to ");
-  DEBUGGING(ssid);
   WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED) 
+  {
     delay(800);
-    //if (WiFi.status() == WL_DISCONNECTED) {
-    //  DEBUGGING("WL_DISCONNECTED");
-    //}
-    DEBUGGING_L(".");
   }
-  //DEBUGGING("Connected");
-  DEBUGGING(WiFi.localIP());
-
 }
 
-// WebSocket Connection
+// WebSocket Connection initialisieren
 void WebSocketConnect() {
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
-  DEBUGGING("Websocket OK");
 }
 
-// MDNS 
-void MDNSConnect() {
-  if (!MDNS.begin(host)) {
-   DEBUGGING("Error setting up MDNS responder!");
-    while (1) {
-      delay(1000);
-    }
-  }
-  DEBUGGING("mDNS responder started");
-  MDNS.addService("ws", "tcp", 81);
-  MDNS.addService("http", "tcp", 80);
+// HTTP updater initialisieren
+void HTTPUpdateConnect() 
+{
+   httpUpdater.setup(&httpServer);
+   httpServer.begin();
 }
 
-// HTTP updater connection
-void HTTPUpdateConnect() {
- httpUpdater.setup(&httpServer);
-  httpServer.begin();
-  DEBUGGING_L("HTTPUServer ready! Open http://fnordlichtfnord.net/update");
-  // DEBUGGING_L(host);
-  // DEBUGGING(".local/update in your browser\n");
-}
+// Filesystem
+// Tool Download https://github.com/esp8266/arduino-esp8266fs-plugin/releases/download/0.1.3/ESP8266FS-0.1.3.zip.
+// Docs http://esp8266.github.io/Arduino/versions/2.0.0/doc/filesystem.html
+#include "FS.h"//holds the current upload
+#include "filemanager.h"
 
+// Webseiten initialisieren/routen
 void HTTPServerInit() {
   httpServer.on("/index.html", HTTP_GET, [](){
     if(!handleFileRead("/index.html")) httpServer.send(404, "text/plain", "FileNotFound");
