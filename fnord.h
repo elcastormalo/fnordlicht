@@ -20,14 +20,14 @@ int NUM_LEDS=    300;
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
-#include <ESP8266WiFi.h>
-#include <DNSServer.h>            //Local DNS Server used for redirecting all requests to the configuration portal
-#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
-#include <ESP8266HTTPUpdateServer.h>
+#include <ESP8266WiFi.h>          // Board Manager:http://arduino.esp8266.com/stable/package_esp8266com_index.json
+#include <DNSServer.h>            // Local DNS Server used for redirecting all requests to the configuration portal. Kommt mit ESP8266Wifi Board
+#include <WiFiManager.h>          // Im Librarymanager installierbar https://github.com/tzapu/WiFiManager WiFi Configuration Magic
+#include <ESP8266HTTPUpdateServer.h> // Kommt mit ESP8266Wifi Board
 #define FASTLED_INTERNAL
-#include <FastLED.h>
+#include <FastLED.h>              // Im Librarymanager installierbar
 #include <Arduino.h>
-#include <WebSocketsServer.h>
+#include <WebSocketsServer.h>     // Websockets von Markus im Librarymanager installierbar
 #include <Hash.h>
 #include "trains.h"
 #include "track.h"
@@ -491,7 +491,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 // Wifi Connection
 // Wifi Connection initialisieren
 void WifiConnect() {
-  WiFi.begin(ssid, password);
+   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) 
   {
     delay(800);

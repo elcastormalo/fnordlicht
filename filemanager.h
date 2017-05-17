@@ -1,3 +1,8 @@
+# Uload von Datein über das Serielle Kabel 
+# Spiffs
+# http://www.esp8266.com/viewtopic.php?f=32&t=10081
+# https://github.com/esp8266/arduino-esp8266fs-plugin/releases
+# Place here: Program files/Arduino/tools/ESP8266FS/tool/esp8266fs.jar
 
 File fsUploadFile;
 
