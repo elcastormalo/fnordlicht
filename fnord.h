@@ -12,7 +12,7 @@
 #define MAX_LEDS    600
 int NUM_LEDS=    600;
 #define BRIGHTNESS          80   // initial brightness
-#define FRAMES_PER_SECOND  24
+#define FRAMES_PER_SECOND   60
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
@@ -25,7 +25,6 @@ bool gReverseDirection = false;
 #include <ESP8266mDNS.h>
 #define FASTLED_INTERNAL
 #include <FastLED.h>              // Im Librarymanager installierbar
-//#include <Wire.h>
 #include <Arduino.h>
 #include <Hash.h>
 #include "trains.h"
@@ -59,6 +58,7 @@ uint8_t gVal = 0;
 
 uint8_t gBright = BRIGHTNESS;
 int gMybright;
+int MyDelay = 60;
 
 // LED Musterfunktionen
 
@@ -346,16 +346,6 @@ void sinewave_color()
   leds[0] = c;
 }
 
-void blinktest() {
-   int prevled= gLedCounter - 1 ;
-   if (prevled < 0 ) {
-     prevled = 0;
-   }
-   // Turn our current led on
-   leds[gLedCounter] = CRGB::White;
-   leds[prevled] = CRGB::Black;
-}
-
 void measure()
 {
   // used to show where which leds are at what position in the room. will be used for CORNERS-effect
@@ -404,6 +394,10 @@ void color_chase(uint32_t color, uint8_t wait)
   return;
 }
 
+void theatre()
+{
+  color_chase(CRGB::Red, 50);
+}
 void cops()
 {
   color_chase(CRGB::Blue, 15);
@@ -412,7 +406,7 @@ void cops()
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, 
+SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, theatre, 
                                 fading_colors, matrix, pulse, trippy, trains, measure, corners, trains2, sinewave, 
                                 sinewave_color, steadyHSV, Fire2012, cops };
 
@@ -426,8 +420,6 @@ void nextPattern()
 //-----------------------------------------------------------
 char htmlpage[2048];
 void updatehtml(){
-  //char StrgAccelX[8];
-  //dtostrf(gAccelX, 4, 4, StrgAccelX);
   int temp = snprintf( htmlpage, 2048, "<html>\
     <head>\
       <title>fnordlicht</title>\
@@ -443,11 +435,11 @@ void updatehtml(){
       <table border=1>\
         <tr><td><a href=\"/rainbow\">Rainbow</a></td><td><a href=\"/rainbowwithglitter\">Rainbow with Glitter</a></td><td><a href=\"/confetti\">Confetti</a></td></tr>\
         <tr><td><a href=\"/sinelon\">Sinelon</a></td><td><a href=\"/juggle\">Juggle</a></td><td><a href=\"/bpm\">BPM</a></td></tr>\
-        <tr><td><a href=\"/steadyrgb\">Steady RGB</a></td><td><a href=\"/blinktest\">Blinktest</a></td><td><a href=\"/fading_colors\">Fading Colors</a></td></tr>\
+        <tr><td><a href=\"/steadyrgb\">Steady RGB</a></td><td><a href=\"/theatre\">Theatre</a></td><td><a href=\"/fading_colors\">Fading Colors</a></td></tr>\
         <tr><td><a href=\"/matrix\">Matrix</a></td><td><a href=\"/pulse\">Pulse</a></td><td><a href=\"/trippy\">Trippy</a></td></tr>\
 		<tr><td><a href=\"/trains\">Trains</a></td><td><a href=\"/measure\">Measure</a></td><td><a href=\"/corners\">Corners</a></td></tr>\
 		<tr><td><a href=\"/trains2\">Trains 2</a></td><td><a href=\"/sinewave\">Sinewave</a></td><td><a href=\"/sinewave_color\">Sinewave Color</a></td></tr>\
-		<tr><td><a href=\"/steady HSV\">Steady HSV</a></td><td><a href=\"/fire2012\">Fire 2012</a></td><td><a href=\"/cops\">Cops</a></td></tr>\
+		<tr><td><a href=\"/off\">off</a></td><td><a href=\"/fire2012\">Fire 2012</a></td><td><a href=\"/cops\">Cops</a></td></tr>\
       </table>\
     <body>\
   </html>",gBright, gMybright);
@@ -482,46 +474,70 @@ void HTTPServerInit() {
   httpServer.on("/",  []() {httpServer.send ( 200, "text/html", htmlpage ); }  );
   httpServer.onNotFound ( []() {httpServer.send ( 200, "text/html", htmlpage ); } );
   httpServer.on("/rainbow",  []() {httpServer.send ( 200, "text/html", htmlpage );
-                                                    gCurrentPatternNumber = 0; updatehtml(); }  );
-  httpServer.on("/rainbowwithglitter",  []() {httpServer.send ( 200, "text/html", htmlpage ); setupSinewaveColor();
+                                                          MyDelay=0;
+                                                          gCurrentPatternNumber = 0; updatehtml(); }  );
+  httpServer.on("/rainbowwithglitter",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0;
                                                           gCurrentPatternNumber = 1; updatehtml(); }  );
   httpServer.on("/confetti",  []() {httpServer.send ( 200, "text/html", htmlpage );
+                                                          MyDelay=0;
                                                           gCurrentPatternNumber = 2; updatehtml();}  );
   httpServer.on("/sinelon",  []() {httpServer.send ( 200, "text/html", htmlpage );
+                                                          MyDelay=0;
                                                           gCurrentPatternNumber = 3; updatehtml();}  );
-  httpServer.on("/juggle",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+  httpServer.on("/juggle",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0; 
                                                           gCurrentPatternNumber = 4; updatehtml();}  );
-  httpServer.on("/bpm",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+  httpServer.on("/bpm",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0; 
                                                           gCurrentPatternNumber = 5; updatehtml();}  );
-  httpServer.on("/steadyrgb",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+  httpServer.on("/steadyrgb",  []() {httpServer.send ( 200, "text/html", htmlpage );
+                                                          MyDelay=0;  
                                                           gCurrentPatternNumber = 6; updatehtml();}  );
-  httpServer.on("/blinktest",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+  httpServer.on("/theatre",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+                                                          MyDelay=0;
                                                           gCurrentPatternNumber = 7; updatehtml();}  );
-  httpServer.on("/fading_colors",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+  httpServer.on("/fading_colors",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0; 
                                                           gCurrentPatternNumber = 8; updatehtml();}  );
   httpServer.on("/matrix",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+                                                          MyDelay=0;
                                                           gCurrentPatternNumber = 9; updatehtml();}  );
-  httpServer.on("/pulse",  []() {httpServer.send ( 200, "text/html", htmlpage );  setupSinewave();
+  httpServer.on("/pulse",  []() {httpServer.send ( 200, "text/html", htmlpage );
+                                                          MyDelay=0;
                                                           gCurrentPatternNumber = 10; updatehtml();}  );
-  httpServer.on("/trippy",  []() {httpServer.send ( 200, "text/html", htmlpage ); random16(125);
+  httpServer.on("/trippy",  []() {httpServer.send ( 200, "text/html", htmlpage );
+                                                          MyDelay=0;
                                                           gCurrentPatternNumber = 11; updatehtml();}  );
-  httpServer.on("/trains",  []() {httpServer.send ( 200, "text/html", htmlpage );   
+  httpServer.on("/trains",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0;  
                                                           gCurrentPatternNumber = 12; updatehtml();}  );
   httpServer.on("/measure",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0;
                                                           gCurrentPatternNumber = 13; updatehtml();}  );
-  httpServer.on("/corners",  []() {httpServer.send ( 200, "text/html", htmlpage );   
+  httpServer.on("/corners",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+                                                          MyDelay=0; 
                                                           gCurrentPatternNumber = 14; updatehtml();}  );
   httpServer.on("/trains2",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0;
                                                           gCurrentPatternNumber = 15; updatehtml();}  );
-  httpServer.on("/sinewave",  []() {httpServer.send ( 200, "text/html", htmlpage ); setupSinewave();
+  httpServer.on("/sinewave",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=2000;
+                                                          setupSinewave();
                                                           gCurrentPatternNumber = 16; updatehtml();}  );
-  httpServer.on("/sinewave_color",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+  httpServer.on("/sinewave_color",  []() {httpServer.send ( 200, "text/html", htmlpage );
+                                                          MyDelay=2000;
+                                                          setupSinewaveColor();
                                                           gCurrentPatternNumber = 17; updatehtml();}  );
   httpServer.on("/steadyhsv",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0;
                                                           gCurrentPatternNumber = 18; updatehtml();}  );
   httpServer.on("/fire2012",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0;
                                                           gCurrentPatternNumber = 19; updatehtml();}  );
   httpServer.on("/cops",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0;
+                                                          FastLED.clear();
                                                           gCurrentPatternNumber = 20; updatehtml();}  );
   httpServer.on("/brightminus",  []() {httpServer.send ( 200, "text/html", htmlpage );  
                                                           gBright = gBright - 10; FastLED.setBrightness(gBright); updatehtml();}  );

@@ -23,7 +23,7 @@ void setup() {
    // Lege ein schickes muster für den Start fest
    gCurrentPatternNumber =11;
    // Hotspot Name um den CLient zu konfigurieren, wenn er kein bekanntes Netz findet
-   wifiManager.autoConnect("hutlicht-config");
+   wifiManager.autoConnect("fNordLicht-config");
    // Initialisiere das Filesstem
    // HTTP Server für Firmware updates http://<ip>/update
    HTTPUpdateConnect();
@@ -38,29 +38,22 @@ void setup() {
 
 // Mainloop
 void loop() {
-    // Muss der Webserver auf etwas antworten?
-    if (millis() - lastTimeHost > 10)
+    //Webserver abarbeiten
+    if (millis() - lastTimeHost > 100)
     {
       httpServer.handleClient();
       lastTimeHost = millis();
     }
-    // Led counter. Bei anchem Mustern wahrscheinlich nützlich
-/*    gLedCounter = gLedCounter + 1;
-    if (gLedCounter > (NUM_LEDS - 1))
-    {
-       gLedCounter = 0;
-    }
- */
     //Aktuelles Patternmuster ausführen
     gPatterns[gCurrentPatternNumber](); 
     // send the 'leds' array out to the actual LED strip
-    FastLED.show();  
+    // Use only if no FasLED.Delay is used: FastLED.show();  
     // insert a delay to keep the framerate modest
-    //FastLED.delay(1000/FRAMES_PER_SECOND); 
+    FastLED.delay(MyDelay/FRAMES_PER_SECOND); 
     // do some periodic updates
     //EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow
     //EVERY_N_SECONDS( 10 ) { nextPattern(); } // change patterns periodically	
-    updatehtml();
+    //updatehtml();
 }
 
 
