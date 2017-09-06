@@ -20,7 +20,7 @@ Train::Train(uint16_t _position, uint16_t _tracklength)
 {
 	this->position = _position;
 	this->NUM_LEDS = _tracklength;
-	this->length = random8(10)+3;
+	this->length = random8(10)+1;
 	this->r = random8();
 	this->g = random8();
 	this->b = random8();

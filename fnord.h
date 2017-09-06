@@ -1,48 +1,39 @@
-#ifndef DEBUGGING
-#define DEBUGGING(...)
-#endif
-#ifndef DEBUGGING_L
-#define DEBUGGING_L(...)
-#endif
-
 #define SSID_ME "fnordeingang"
 #define PW_ME "R112Zr11ch3353burger"
 #define HOST_ME "fnordlicht"
 
+#define CONST_NUM_TRAINS 10
+
+// Leds Pins D3 und D4 auf NodeMCU
 #define DATA_PIN_STRIP_ONE    1
 #define DATA_PIN_STRIP_TWO    2
 #define LED_TYPE    WS2811
 #define COLOR_ORDER GRB
-#define MAX_LEDS    300
-int NUM_LEDS=    300;
-#define BRIGHTNESS          165   // initial brightness
-#define FRAMES_PER_SECOND  30
+#define MAX_LEDS    600
+int NUM_LEDS=    600;
+#define BRIGHTNESS          80   // initial brightness
+#define FRAMES_PER_SECOND  24
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
+
+bool gReverseDirection = false;
 
 #include <ESP8266WiFi.h>          // Board Manager:http://arduino.esp8266.com/stable/package_esp8266com_index.json
 #include <DNSServer.h>            // Local DNS Server used for redirecting all requests to the configuration portal. Kommt mit ESP8266Wifi Board
 #include <WiFiManager.h>          // Im Librarymanager installierbar https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 #include <ESP8266HTTPUpdateServer.h> // Kommt mit ESP8266Wifi Board
+#include <ESP8266mDNS.h>
 #define FASTLED_INTERNAL
 #include <FastLED.h>              // Im Librarymanager installierbar
+//#include <Wire.h>
 #include <Arduino.h>
-#include <WebSocketsServer.h>     // Websockets von Markus im Librarymanager installierbar
 #include <Hash.h>
 #include "trains.h"
 #include "track.h"
 
-//includen wir erst weiter unten, weil es einige Funktionen bracuht. Kack Arduino IDE. 
-//// Filesystem
-//// Tool Download https://github.com/esp8266/arduino-esp8266fs-plugin/releases/download/0.1.3/ESP8266FS-0.1.3.zip.
-//// Docs http://esp8266.github.io/Arduino/versions/2.0.0/doc/filesystem.html
-//#include "FS.h"//holds the current upload
-//#include "filemanager.h"
-
 FASTLED_USING_NAMESPACE
 
 //Globals
-WebSocketsServer webSocket = WebSocketsServer(81);
 ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 const char* host = HOST_ME;
@@ -51,9 +42,6 @@ const char* password = PW_ME;
 unsigned long lastTimeHost = 0;
 unsigned long lastTimeRefresh = 0;
 
-#if defined(FASTLED_VERSION) && (FASTLED_VERSION < 3001000)
-#warning "Requires FastLED 3.1 or later; check github for latest code."
-#endif
 
 // LED Array
 CRGBArray<MAX_LEDS> leds;
@@ -70,9 +58,84 @@ uint8_t gSat = 0;
 uint8_t gVal = 0;
 
 uint8_t gBright = BRIGHTNESS;
-
+int gMybright;
 
 // LED Musterfunktionen
+
+// Fire2012 by Mark Kriegsman, July 2012
+// as part of "Five Elements" shown here: http://youtu.be/knWiGsmgycY
+//// 
+// This basic one-dimensional 'fire' simulation works roughly as follows:
+// There's a underlying array of 'heat' cells, that model the temperature
+// at each point along the line.  Every cycle through the simulation, 
+// four steps are performed:
+//  1) All cells cool down a little bit, losing heat to the air
+//  2) The heat from each cell drifts 'up' and diffuses a little
+//  3) Sometimes randomly new 'sparks' of heat are added at the bottom
+//  4) The heat from each cell is rendered as a color into the leds array
+//     The heat-to-color mapping uses a black-body radiation approximation.
+//
+// Temperature is in arbitrary units from 0 (cold black) to 255 (white hot).
+//
+// This simulation scales it self a bit depending on NUM_LEDS; it should look
+// "OK" on anywhere from 20 to 100 LEDs without too much tweaking. 
+//
+// I recommend running this simulation at anywhere from 30-100 frames per second,
+// meaning an interframe delay of about 10-35 milliseconds.
+//
+// Looks best on a high-density LED setup (60+ pixels/meter).
+//
+//
+// There are two main parameters you can play with to control the look and
+// feel of your fire: COOLING (used in step 1 above), and SPARKING (used
+// in step 3 above).
+//
+// COOLING: How much does the air cool as it rises?
+// Less cooling = taller flames.  More cooling = shorter flames.
+// Default 50, suggested range 20-100 
+#define COOLING  55
+
+// SPARKING: What chance (out of 255) is there that a new spark will be lit?
+// Higher chance = more roaring fire.  Lower chance = more flickery fire.
+// Default 120, suggested range 50-200.
+#define SPARKING 120
+
+
+void Fire2012()
+{
+// Array of temperature readings at each simulation cell
+  static byte heat[MAX_LEDS];
+
+  // Step 1.  Cool down every cell a little
+    for( int i = 0; i < NUM_LEDS; i++) {
+      heat[i] = qsub8( heat[i],  random8(0, ((COOLING * 10) / NUM_LEDS) + 2));
+    }
+  
+    // Step 2.  Heat from each cell drifts 'up' and diffuses a little
+    for( int k= NUM_LEDS - 1; k >= 2; k--) {
+      heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2] ) / 3;
+    }
+    
+    // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
+    if( random8() < SPARKING ) {
+      int y = random8(7);
+      heat[y] = qadd8( heat[y], random8(160,255) );
+    }
+
+    // Step 4.  Map from heat cells to LED colors
+    for( int j = 0; j < NUM_LEDS; j++) {
+      CRGB color = HeatColor( heat[j]);
+      int pixelnumber;
+      if( gReverseDirection ) {
+        pixelnumber = (NUM_LEDS-1) - j;
+      } else {
+        pixelnumber = j;
+      }
+      leds[pixelnumber] = color;
+    }
+}
+
+
 // In SimplePatternList gPatterns eintragen und über die Position als gCurrentPatternNumber ansprechen
 void steadyRGB() 
 {
@@ -315,177 +378,81 @@ void corners()
   leds(280, NUM_LEDS) = CHSV(96, 255, random8(55)+200);
 }
 
+void color_chase(uint32_t color, uint8_t wait)
+{
+  //clear() turns all LEDs off
+  //FastLED.clear();
+  //The brightness ranges from 0-255
+  //Sets brightness for all LEDS at once
+  FastLED.setBrightness(gBright);
+  // Move a single led
+  for(int led_number = 0; led_number < NUM_LEDS; led_number++)
+  {
+    // Turn our current led ON, then show the leds
+    leds[led_number] = color;
+
+    // Show the leds (only one of which is has a color set, from above
+    // Show turns actually turns on the LEDs
+    FastLED.show();
+
+    // Wait a little bit
+    delay(wait);
+
+    // Turn our current led back to black for the next loop around
+    leds[led_number] = CRGB::Black;
+  }
+  return;
+}
+
+void cops()
+{
+  color_chase(CRGB::Blue, 15);
+}
 
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
 SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, blinktest, 
-                                fading_colors, matrix, pulse, trippy, trains, measure, corners, trains2, sinewave, sinewave_color, steadyHSV };
+                                fading_colors, matrix, pulse, trippy, trains, measure, corners, trains2, sinewave, 
+                                sinewave_color, steadyHSV, Fire2012, cops };
 
 // Nicht LED Muster Funktionen
-
 void nextPattern()
 {
   // add one to the current pattern number, and wrap around at the end
   gCurrentPatternNumber = (gCurrentPatternNumber + 1) % ARRAY_SIZE( gPatterns);
 }
 
-String myState() {
-  String Antwort = "";
-  Antwort += gBright;
-  Antwort += ";";
-  Antwort += gCurrentPatternNumber;
-  Antwort += ";";
-  Antwort += gRed;
-  Antwort += ";";
-  Antwort += gGreen;
-  Antwort += ";";
-  Antwort += gBlue;
-  Antwort += ";";
-  Antwort += gHue;
-  Antwort += ";";
-  Antwort += gSat;
-  Antwort += ";";
-  Antwort += gVal;
-  return Antwort;
-} 
-
-// WebSocket Events
-// "Befehle" der Webseite (websocket) verarbeiten
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
-  String Antwort = "";
-  switch (type)
-  {
-    case WStype_DISCONNECTED:
-      break;
-    case WStype_CONNECTED:
-      {
-        IPAddress ip = webSocket.remoteIP(num);
-        //webSocket.sendTXT(num, "Connected");
-        //webSocket.broadcastTXT("Connected");
-        Antwort = myState();
-        webSocket.sendTXT(num, Antwort);
-      }
-      break;
-      
-    case WStype_TEXT:
-      {
-        lastTimeRefresh = millis();
-        digitalWrite(LED_BUILTIN, LOW);  // built-in LED on um Feedback über empfangene Kommandos zu geben
-
-        String text = String((char *) &payload[0]);
-        if (text.startsWith("r")) 
-        {
-          String rVal = (text.substring(text.indexOf("r") + 1, text.length()));
-          gRed = rVal.toInt();
-        }
-        if (text.startsWith("g")) 
-        {
-          String gVal = (text.substring(text.indexOf("g") + 1, text.length()));
-          gGreen = gVal.toInt();
-        }
-        if (text.startsWith("b")) 
-        {
-          String bVal = (text.substring(text.indexOf("b") + 1, text.length()));
-          gBlue = bVal.toInt();             
-        }
-        if (text.startsWith("h")) 
-        {
-          String hVal = (text.substring(text.indexOf("h") + 1, text.length()));
-          gHue = hVal.toInt();
-        }
-        if (text.startsWith("s")) 
-        {
-          String sVal = (text.substring(text.indexOf("s") + 1, text.length()));
-          gSat = sVal.toInt();
-        }
-        if (text.startsWith("v")) 
-        {
-          String vVal = (text.substring(text.indexOf("v") + 1, text.length()));
-          gVal = vVal.toInt();             
-        }
-        if (text.startsWith("m")) 
-        {
-          String mVal = (text.substring(text.indexOf("m") + 1, text.length()));
-          gBright = mVal.toInt();
-          FastLED.setBrightness(gBright);
-        }        
-        if (text == "RESET") {
-          leds.fadeToBlackBy(40);
-        }
-        if (text == "RAINBOW") {
-          gCurrentPatternNumber = 0;
-        }
-        if (text == "RAINBOW_GLITTER") {
-          gCurrentPatternNumber = 1;
-        }
-        if (text == "CONFETTI") {
-          gCurrentPatternNumber = 2;
-        }
-        if (text == "SINELON") {
-          gCurrentPatternNumber = 3;
-        }
-        if (text == "JUGGLE") {
-          gCurrentPatternNumber = 4;
-        }
-        if (text == "BPM") {
-          gCurrentPatternNumber = 5;
-        }
-        if (text == "STEADY") {
-          gCurrentPatternNumber = 6;
-        }
-        if (text == "BLINK") {
-          gCurrentPatternNumber = 7;
-        }
-        if (text == "FADING_RAINBOW") {
-          gCurrentPatternNumber = 8;
-        }
-        if (text == "MATRIX") {
-          gCurrentPatternNumber = 9;
-        }
-        if (text == "PULSE") {
-          gCurrentPatternNumber = 10;
-        }
-        if (text == "TRIPPY") {
-          dist = random16(12345);  
-          gCurrentPatternNumber = 11;
-        }
-        if (text == "TRAINS") {
-          gCurrentPatternNumber = 12;
-        }
-        if (text == "MEASURE") {
-          gCurrentPatternNumber = 13;
-        }
-        if (text == "CORNERS") {
-          gCurrentPatternNumber = 14;
-        }
-        if (text == "TRAINS2") {
-          gCurrentPatternNumber = 15;
-        }
-        if (text == "SINEWAVE") {
-          setupSinewave();
-          gCurrentPatternNumber = 16;
-        }
-        if (text == "SINEWAVE_COLOR") {
-          setupSinewaveColor();
-          gCurrentPatternNumber = 17;
-        }
-        if (text == "STEADY_HSV") {
-          gCurrentPatternNumber = 18;
-        }
-        digitalWrite(LED_BUILTIN, HIGH);   // on-board LED off
-        Antwort = myState();
-        webSocket.sendTXT(num, Antwort);
-      }      
-      break;
-    
-    case WStype_BIN:
-      hexdump(payload, length);
-      // echo data back to browser
-      webSocket.sendBIN(num, payload, length);
-      break;
-  }
+//-----------------------------------------------------------
+char htmlpage[2048];
+void updatehtml(){
+  //char StrgAccelX[8];
+  //dtostrf(gAccelX, 4, 4, StrgAccelX);
+  int temp = snprintf( htmlpage, 2048, "<html>\
+    <head>\
+      <title>fnordlicht</title>\
+      <style>\
+        body { background-color: #cccccc; font-family: Arial, Helvetica, Sans-Serif; Color: #000088; }\
+      </style>\
+    </head>\
+    <body>\
+      <h1>fnordlicht</h1>\
+      <p><a href=\"/\">Refresh</a></p>\
+      <p><a href=\"/brightminus\"><b>-</b></a>&nbsp;Brightness:&nbsp; %i &nbsp;<a href=\"/brightplus\"><b>+</b></a></p>\
+      <p>MyBright: %i </p>\
+      <table border=1>\
+        <tr><td><a href=\"/rainbow\">Rainbow</a></td><td><a href=\"/rainbowwithglitter\">Rainbow with Glitter</a></td><td><a href=\"/confetti\">Confetti</a></td></tr>\
+        <tr><td><a href=\"/sinelon\">Sinelon</a></td><td><a href=\"/juggle\">Juggle</a></td><td><a href=\"/bpm\">BPM</a></td></tr>\
+        <tr><td><a href=\"/steadyrgb\">Steady RGB</a></td><td><a href=\"/blinktest\">Blinktest</a></td><td><a href=\"/fading_colors\">Fading Colors</a></td></tr>\
+        <tr><td><a href=\"/matrix\">Matrix</a></td><td><a href=\"/pulse\">Pulse</a></td><td><a href=\"/trippy\">Trippy</a></td></tr>\
+		<tr><td><a href=\"/trains\">Trains</a></td><td><a href=\"/measure\">Measure</a></td><td><a href=\"/corners\">Corners</a></td></tr>\
+		<tr><td><a href=\"/trains2\">Trains 2</a></td><td><a href=\"/sinewave\">Sinewave</a></td><td><a href=\"/sinewave_color\">Sinewave Color</a></td></tr>\
+		<tr><td><a href=\"/steady HSV\">Steady HSV</a></td><td><a href=\"/fire2012\">Fire 2012</a></td><td><a href=\"/cops\">Cops</a></td></tr>\
+      </table>\
+    <body>\
+  </html>",gBright, gMybright);
 }
+
 
 
 // Wifi Connection
@@ -498,70 +465,70 @@ void WifiConnect() {
   }
 }
 
-// WebSocket Connection initialisieren
-void WebSocketConnect() {
-  webSocket.begin();
-  webSocket.onEvent(webSocketEvent);
-}
 
 // HTTP updater initialisieren
 void HTTPUpdateConnect() 
 {
-   httpUpdater.setup(&httpServer);
+   httpUpdater.setup(&httpServer, "/update", "root", "fNordAdmin");
    httpServer.begin();
 }
 
-// Filesystem
-// Tool Download https://github.com/esp8266/arduino-esp8266fs-plugin/releases/download/0.1.3/ESP8266FS-0.1.3.zip.
-// Docs http://esp8266.github.io/Arduino/versions/2.0.0/doc/filesystem.html
-#include "FS.h"//holds the current upload
-#include "filemanager.h"
 
 // Webseiten initialisieren/routen
 void HTTPServerInit() {
-  httpServer.on("/index.html", HTTP_GET, [](){
-    if(!handleFileRead("/index.html")) httpServer.send(404, "text/plain", "FileNotFound");
-  });
-  httpServer.on("/", HTTP_GET, [](){
-    if(!handleFileRead("/index.html")) httpServer.send(404, "text/plain", "FileNotFound");
-  });  
-  httpServer.on("/monitor", HTTP_GET, [](){
-    if(!handleFileRead("/monitor.html")) httpServer.send(404, "text/plain", "FileNotFound");
-  });
-  httpServer.on("/help", HTTP_GET, [](){
-    if(!handleFileRead("/help.html")) httpServer.send(404, "text/plain", "FileNotFound");
-  });
-
-  httpServer.on("/list", HTTP_GET, handleFileList);
-  //load editor
-  httpServer.on("/edit", HTTP_GET, [](){
-    if(!handleFileRead("/edit.htm")) httpServer.send(404, "text/plain", "FileNotFound");
-  });
-  //create file
-  httpServer.on("/edit", HTTP_PUT, handleFileCreate);
-  //delete file
-  httpServer.on("/edit", HTTP_DELETE, handleFileDelete);
-  //first callback is called after the request has ended with all parsed arguments
-  //second callback handles file uploads at that location
-  httpServer.on("/edit", HTTP_POST, [](){ httpServer.send(200, "text/plain", ""); }, handleFileUpload);
-
-  //called when the url is not defined here
-  //use it to load content from SPIFFS
-  httpServer.onNotFound([](){
-    if(!handleFileRead(httpServer.uri()))
-      httpServer.send(404, "text/plain", "FileNotFound");
-  });
-
-  //get heap status, analog input value and all GPIO statuses in one json call
-  httpServer.on("/all", HTTP_GET, [](){
-    String json = "{";
-    json += "\"heap\":"+String(ESP.getFreeHeap());
-    json += ", \"analog\":"+String(analogRead(A0));
-    json += ", \"gpio\":"+String((uint32_t)(((GPI | GPO) & 0xFFFF) | ((GP16I & 0x01) << 16)));
-    json += "}";
-    httpServer.send(200, "text/json", json);
-    json = String();
-  });
+  updatehtml();
+  httpServer.on("/index.html",  []() {httpServer.send ( 200, "text/html", htmlpage );
+                                                        gCurrentPatternNumber = 11; }  );
+  httpServer.on("/",  []() {httpServer.send ( 200, "text/html", htmlpage ); }  );
+  httpServer.onNotFound ( []() {httpServer.send ( 200, "text/html", htmlpage ); } );
+  httpServer.on("/rainbow",  []() {httpServer.send ( 200, "text/html", htmlpage );
+                                                    gCurrentPatternNumber = 0; updatehtml(); }  );
+  httpServer.on("/rainbowwithglitter",  []() {httpServer.send ( 200, "text/html", htmlpage ); setupSinewaveColor();
+                                                          gCurrentPatternNumber = 1; updatehtml(); }  );
+  httpServer.on("/confetti",  []() {httpServer.send ( 200, "text/html", htmlpage );
+                                                          gCurrentPatternNumber = 2; updatehtml();}  );
+  httpServer.on("/sinelon",  []() {httpServer.send ( 200, "text/html", htmlpage );
+                                                          gCurrentPatternNumber = 3; updatehtml();}  );
+  httpServer.on("/juggle",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+                                                          gCurrentPatternNumber = 4; updatehtml();}  );
+  httpServer.on("/bpm",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+                                                          gCurrentPatternNumber = 5; updatehtml();}  );
+  httpServer.on("/steadyrgb",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+                                                          gCurrentPatternNumber = 6; updatehtml();}  );
+  httpServer.on("/blinktest",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+                                                          gCurrentPatternNumber = 7; updatehtml();}  );
+  httpServer.on("/fading_colors",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+                                                          gCurrentPatternNumber = 8; updatehtml();}  );
+  httpServer.on("/matrix",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+                                                          gCurrentPatternNumber = 9; updatehtml();}  );
+  httpServer.on("/pulse",  []() {httpServer.send ( 200, "text/html", htmlpage );  setupSinewave();
+                                                          gCurrentPatternNumber = 10; updatehtml();}  );
+  httpServer.on("/trippy",  []() {httpServer.send ( 200, "text/html", htmlpage ); random16(125);
+                                                          gCurrentPatternNumber = 11; updatehtml();}  );
+  httpServer.on("/trains",  []() {httpServer.send ( 200, "text/html", htmlpage );   
+                                                          gCurrentPatternNumber = 12; updatehtml();}  );
+  httpServer.on("/measure",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          gCurrentPatternNumber = 13; updatehtml();}  );
+  httpServer.on("/corners",  []() {httpServer.send ( 200, "text/html", htmlpage );   
+                                                          gCurrentPatternNumber = 14; updatehtml();}  );
+  httpServer.on("/trains2",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          gCurrentPatternNumber = 15; updatehtml();}  );
+  httpServer.on("/sinewave",  []() {httpServer.send ( 200, "text/html", htmlpage ); setupSinewave();
+                                                          gCurrentPatternNumber = 16; updatehtml();}  );
+  httpServer.on("/sinewave_color",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          gCurrentPatternNumber = 17; updatehtml();}  );
+  httpServer.on("/steadyhsv",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          gCurrentPatternNumber = 18; updatehtml();}  );
+  httpServer.on("/fire2012",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          gCurrentPatternNumber = 19; updatehtml();}  );
+  httpServer.on("/cops",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          gCurrentPatternNumber = 20; updatehtml();}  );
+  httpServer.on("/brightminus",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+                                                          gBright = gBright - 10; FastLED.setBrightness(gBright); updatehtml();}  );
+  httpServer.on("/brightplus",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+                                                          gBright = gBright + 10; FastLED.setBrightness(gBright); updatehtml();}  );
+  httpServer.on("/off",  []() {httpServer.send ( 200, "text/html", htmlpage );  
+                                                          gBright = 0; FastLED.setBrightness(gBright); updatehtml();}  );
 }
 
 

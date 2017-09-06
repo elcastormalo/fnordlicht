@@ -1,13 +1,12 @@
 //#include <FastLED.h>
 //#include "trains.h"
 
-
 class Track
 {
   private:
     uint16_t NUM_LEDS;    
     uint8_t NUM_TRAINS;
-    Train *trains[15];
+    Train *trains[CONST_NUM_TRAINS];
   public:
     Track(unsigned int _tracklength);
     void step();
@@ -17,7 +16,7 @@ class Track
 Track::Track(unsigned int _tracklength)
 {
   this->NUM_LEDS =_tracklength;
-  this->NUM_TRAINS = 15;
+  this->NUM_TRAINS = CONST_NUM_TRAINS;
   for (int i=0; i<NUM_TRAINS;i++)
   {
     trains[i] = new Train( random16(NUM_LEDS),_tracklength);
