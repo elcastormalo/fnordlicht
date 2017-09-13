@@ -22,7 +22,7 @@ bool gReverseDirection = false;
 #include <DNSServer.h>            // Local DNS Server used for redirecting all requests to the configuration portal. Kommt mit ESP8266Wifi Board
 #include <WiFiManager.h>          // Im Librarymanager installierbar https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 #include <ESP8266HTTPUpdateServer.h> // Kommt mit ESP8266Wifi Board
-#include <ESP8266mDNS.h>
+//#include <ESP8266mDNS.h>
 #define FASTLED_INTERNAL
 #include <FastLED.h>              // Im Librarymanager installierbar
 #include <Arduino.h>
@@ -58,7 +58,7 @@ uint8_t gVal = 0;
 
 uint8_t gBright = BRIGHTNESS;
 int gMybright;
-int MyDelay = 60;
+int MyDelay = 1;
 
 // LED Musterfunktionen
 
@@ -394,13 +394,28 @@ void color_chase(uint32_t color, uint8_t wait)
   return;
 }
 
+void theaterChase(byte red, byte green, byte blue, int SpeedDelay) {
+  for (int j=0; j<10; j++) {  //do 10 cycles of chasing
+    for (int q=0; q < 3; q++) {
+      for (int i=0; i < NUM_LEDS; i=i+3) {
+        leds[i+q] = CHSV(red, green, blue);    //turn every third pixel on
+      }
+      FastLED.show();
+      delay(SpeedDelay);
+      for (int i=0; i < NUM_LEDS; i=i+3) {
+        leds[i+q] = CHSV(0,0,0);        //turn every third pixel off
+      }
+    }
+  }
+}
 void theatre()
 {
-  color_chase(CRGB::Red, 50);
+    theaterChase(0xff,0,0,50);  
 }
+
 void cops()
 {
-  color_chase(CRGB::Blue, 15);
+  color_chase(CRGB::Blue, 1);
 }
 
 
@@ -540,7 +555,10 @@ void HTTPServerInit() {
                                                           FastLED.clear();
                                                           gCurrentPatternNumber = 20; updatehtml();}  );
   httpServer.on("/brightminus",  []() {httpServer.send ( 200, "text/html", htmlpage );  
-                                                          gBright = gBright - 10; FastLED.setBrightness(gBright); updatehtml();}  );
+                                                          gBright = gBright - 10; FastLED.setBrightness(gBright); 
+                                                          if (gBright > 250) { gBright=250; }
+                                                          if (gBright < 0 ) { gBright=0; }
+                                                          updatehtml();}  );
   httpServer.on("/brightplus",  []() {httpServer.send ( 200, "text/html", htmlpage );  
                                                           gBright = gBright + 10; FastLED.setBrightness(gBright); updatehtml();}  );
   httpServer.on("/off",  []() {httpServer.send ( 200, "text/html", htmlpage );  
