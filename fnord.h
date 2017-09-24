@@ -60,6 +60,19 @@ uint8_t gBright = BRIGHTNESS;
 int gMybright;
 int MyDelay = 1;
 
+// Für Ripple
+int color;
+int center = 0;
+int step = -1;
+int maxSteps = 16;
+float fadeRate = 0.8;
+int diff;
+ 
+//background color
+uint32_t currentBg = random(256);
+uint32_t nextBg = currentBg;
+// Ripple Ende
+
 // LED Musterfunktionen
 
 // Fire2012 by Mark Kriegsman, July 2012
@@ -216,6 +229,7 @@ void fading_colors()
 
 void matrix()
 {
+  
   // different shaded of green are pushed doen the strip
   for(int i = NUM_LEDS-1; i >= 1; i--) 
   { 
@@ -224,7 +238,7 @@ void matrix()
   leds[0] = CHSV(96, random8(100)+155, random8(200)+55);
 }
 
-int8_t pulse_dir = 8;
+int8_t pulse_dir = 16;
 void pulse()
 {
   // brightness goes slowly from dark to bright, color changes slightly everytime it's dark
@@ -233,12 +247,12 @@ void pulse()
   if (b >= 254)
   {
     gBright = 254;
-    pulse_dir = -8;
+    pulse_dir = -16;
   }
   else if (b <= 32) // minimum brightness, to reduce time without any light
   {
     gBright = 32;
-    pulse_dir = 8;
+    pulse_dir = 16;
     gHue += 16;
     gHue %= 255;
   }
@@ -394,7 +408,8 @@ void color_chase(uint32_t color, uint8_t wait)
   return;
 }
 
-void theaterChase(byte red, byte green, byte blue, int SpeedDelay) {
+void theaterChase(byte red, byte green, byte blue, int SpeedDelay) 
+{
   for (int j=0; j<10; j++) {  //do 10 cycles of chasing
     for (int q=0; q < 3; q++) {
       for (int i=0; i < NUM_LEDS; i=i+3) {
@@ -418,12 +433,118 @@ void cops()
   color_chase(CRGB::Blue, 1);
 }
 
+void cleaning()
+{
+   leds(0,NUM_LEDS - 1) = CRGB(255,255,255);  
+}
+
+int wrap(int step) {
+  if(step < 0) return NUM_LEDS + step;
+  if(step > NUM_LEDS - 1) return step - NUM_LEDS;
+  return step;
+}
+ 
+void one_color_allHSV(int ahue, int abright) {                // SET ALL LEDS TO ONE COLOR (HSV)
+  for (int i = 0 ; i < NUM_LEDS; i++ ) {
+    leds[i] = CHSV(ahue, 255, abright);
+  }
+}
+
+void ripple() {
+// TODO: Braucht mehr Ripples gleichzeitig 
+    if (currentBg == nextBg) {
+      nextBg = random(256);
+    }
+    else if (nextBg > currentBg) {
+      currentBg++;
+    } else {
+      currentBg--;
+    }
+    for(uint16_t l = 0; l < NUM_LEDS; l++) {
+      leds[l] = CHSV(currentBg, 255, 50);         // strip.setPixelColor(l, Wheel(currentBg, 0.1));
+    }
+ 
+  if (step == -1) 
+  {
+    center = random(NUM_LEDS);
+    color = random(256);
+    step = 0;
+  }
+ 
+  if (step == 0) 
+  {
+    leds[center] = CHSV(color, 255, 255);         // strip.setPixelColor(center, Wheel(color, 1));
+    step ++;
+  }
+  else 
+  {
+    if (step < maxSteps) 
+    {
+      Serial.println(pow(fadeRate,step));
+ 
+      leds[wrap(center + step)] = CHSV(color, 255, pow(fadeRate, step)*255);       //   strip.setPixelColor(wrap(center + step), Wheel(color, pow(fadeRate, step)));
+      leds[wrap(center - step)] = CHSV(color, 255, pow(fadeRate, step)*255);       //   strip.setPixelColor(wrap(center - step), Wheel(color, pow(fadeRate, step)));
+      if (step > 3) 
+      {
+        leds[wrap(center + step - 3)] = CHSV(color, 255, pow(fadeRate, step - 2)*255);     //   strip.setPixelColor(wrap(center + step - 3), Wheel(color, pow(fadeRate, step - 2)));
+        leds[wrap(center - step + 3)] = CHSV(color, 255, pow(fadeRate, step - 2)*255);     //   strip.setPixelColor(wrap(center - step + 3), Wheel(color, pow(fadeRate, step - 2)));
+      }
+      step ++;
+    }
+    else {
+      step = -1;
+    }
+  }
+ 
+  LEDS.show();
+  delay(50);
+}
+
+void noise()
+{
+  fill_noise8 (leds, NUM_LEDS, 1, 0, 1, 1, random16(), 20, 1);
+  delay(50);
+}
+
+void initsort()
+{
+  for (int i = 0; i < NUM_LEDS; i++)
+  {
+    leds[i] = CHSV(random8(), 127, 127);
+  }
+}
+
+void bubblesort()
+{
+  int n = NUM_LEDS;
+  bool b = true;
+  while (n > 1 && b)
+  {
+    int i = 0;
+    while (i < n-1 && b)    
+    {
+      int left = leds[i].r + leds[i].g * 255 + leds[i].b * 255 * 255;
+      int right = leds[i+1].r + leds[i+1].g * 255 + leds[i+1].b * 255 * 255;
+      if (left > right)
+      {
+        CRGB x = leds[i];
+        leds[i] = leds[i+1];
+        leds[i+1] = x;
+        //LEDS.show();
+        b = false;
+        break;
+      }
+      i++;
+    }
+    n--;
+  }
+}
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
 SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, theatre, 
                                 fading_colors, matrix, pulse, trippy, trains, measure, corners, trains2, sinewave, 
-                                sinewave_color, steadyHSV, Fire2012, cops };
+                                sinewave_color, steadyHSV, Fire2012, cops, cleaning, ripple, noise, bubblesort };
 
 // Nicht LED Muster Funktionen
 void nextPattern()
@@ -455,6 +576,10 @@ void updatehtml(){
 		<tr><td><a href=\"/trains\">Trains</a></td><td><a href=\"/measure\">Measure</a></td><td><a href=\"/corners\">Corners</a></td></tr>\
 		<tr><td><a href=\"/trains2\">Trains 2</a></td><td><a href=\"/sinewave\">Sinewave</a></td><td><a href=\"/sinewave_color\">Sinewave Color</a></td></tr>\
 		<tr><td><a href=\"/off\">off</a></td><td><a href=\"/fire2012\">Fire 2012</a></td><td><a href=\"/cops\">Cops</a></td></tr>\
+    <tr><td><a href=\"/cleaning\">Putzlicht</a></td><td><a href=\"/ripple\">Ripple</a></td><td><a href=\"/noise\">Noise</a></td></tr>\
+      </table><br/>\
+      <table border=1>\
+        <tr><td><a href=\"/bubblesort\">Bubblesort</a></td><td></td><td></td></tr>\
       </table>\
     <body>\
   </html>",gBright, gMybright);
@@ -554,10 +679,26 @@ void HTTPServerInit() {
                                                           MyDelay=0;
                                                           FastLED.clear();
                                                           gCurrentPatternNumber = 20; updatehtml();}  );
+  httpServer.on("/cleaning",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0;
+                                                          FastLED.clear();
+                                                          gCurrentPatternNumber = 21; updatehtml();}  );
+  httpServer.on("/ripple",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0;
+                                                          FastLED.clear();
+                                                          gCurrentPatternNumber = 22; updatehtml();}  );
+  httpServer.on("/noise",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0;
+                                                          FastLED.clear();
+                                                          gCurrentPatternNumber = 23; updatehtml();}  );
+  httpServer.on("/bubblesort",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0;                                                          
+                                                          FastLED.clear();
+                                                          initsort();
+                                                          gCurrentPatternNumber = 24; updatehtml();}  );
   httpServer.on("/brightminus",  []() {httpServer.send ( 200, "text/html", htmlpage );  
                                                           gBright = gBright - 10; FastLED.setBrightness(gBright); 
-                                                          if (gBright > 250) { gBright=250; }
-                                                          if (gBright < 0 ) { gBright=0; }
+                                                          gBright %= 255;
                                                           updatehtml();}  );
   httpServer.on("/brightplus",  []() {httpServer.send ( 200, "text/html", htmlpage );  
                                                           gBright = gBright + 10; FastLED.setBrightness(gBright); updatehtml();}  );
