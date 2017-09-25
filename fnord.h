@@ -370,7 +370,13 @@ void measure()
   leds[150] = CRGB::Blue;
   leds[200] = CRGB::Cyan;
   leds[250] = CRGB::Yellow;
-  leds[299] = CRGB::White;
+  leds[300] = CRGB::White;
+  leds[350] = CRGB::White;
+  leds[400] = CRGB::Red;
+  leds[450] = CRGB::Green;
+  leds[500] = CRGB::Blue;
+  leds[550] = CRGB::Cyan;
+  leds[599] = CRGB::Yellow;
 }
 
 void corners()
@@ -510,8 +516,22 @@ void initsort()
 {
   for (int i = 0; i < NUM_LEDS; i++)
   {
-    leds[i] = CHSV(random8(), 127, 127);
+    leds[i] = CHSV(random8(), 255, gBright);
   }
+}
+
+void swap(int left, int right)
+{
+   CRGB x = leds[left];
+   leds[left] = leds[right];
+   leds[right] = x;
+}
+
+bool compare(int left, int right)
+{
+  int l = leds[left].r + leds[left].g << 8 + leds[left].b << 16;
+  int r = leds[tight].r + leds[right].g << 8 + leds[right].b << 16;  
+  compare = l > r;
 }
 
 void bubblesort()
@@ -523,13 +543,9 @@ void bubblesort()
     int i = 0;
     while (i < n-1 && b)    
     {
-      int left = leds[i].r + leds[i].g * 255 + leds[i].b * 255 * 255;
-      int right = leds[i+1].r + leds[i+1].g * 255 + leds[i+1].b * 255 * 255;
-      if (left > right)
+      if (compare(i,i+1))
       {
-        CRGB x = leds[i];
-        leds[i] = leds[i+1];
-        leds[i+1] = x;
+		swap(i, i+1);
         //LEDS.show();
         b = false;
         break;
@@ -540,11 +556,44 @@ void bubblesort()
   }
 }
 
+void shakersort()
+{
+  bool swapped;
+  do
+  {
+    swapped = false;
+    for (int i = 0; i <= NUM_LEDS - 2; i++)
+    {
+      if (compare(i,i+1))
+      {
+        swap(i, i+1);
+        LEDS.show();
+        swapped = true;
+      }
+    }
+    if (!swapped)
+    {
+      break;
+    }
+    swapped = false;
+    for (int i = NUM_LEDS - 2; i >= 0; i--)
+    {
+      if (compare(i,i+1))
+      {
+        swap(i, i + 1);
+        LEDS.show();
+        swapped = true;
+      }
+    }
+  } while (swapped);	
+}
+
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
 SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, theatre, 
                                 fading_colors, matrix, pulse, trippy, trains, measure, corners, trains2, sinewave, 
-                                sinewave_color, steadyHSV, Fire2012, cops, cleaning, ripple, noise, bubblesort };
+                                sinewave_color, steadyHSV, Fire2012, cops, cleaning, ripple, noise, bubblesort,
+								shakersort };
 
 // Nicht LED Muster Funktionen
 void nextPattern()
@@ -579,7 +628,7 @@ void updatehtml(){
     <tr><td><a href=\"/cleaning\">Putzlicht</a></td><td><a href=\"/ripple\">Ripple</a></td><td><a href=\"/noise\">Noise</a></td></tr>\
       </table><br/>\
       <table border=1>\
-        <tr><td><a href=\"/bubblesort\">Bubblesort</a></td><td></td><td></td></tr>\
+        <tr><td><a href=\"/bubblesort\">Bubblesort</a></td><td><a href=\"/shakersort\">Shakersort</a></td><td></td></tr>\
       </table>\
     <body>\
   </html>",gBright, gMybright);
@@ -696,6 +745,11 @@ void HTTPServerInit() {
                                                           FastLED.clear();
                                                           initsort();
                                                           gCurrentPatternNumber = 24; updatehtml();}  );
+  httpServer.on("/shakersort",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0;                                                          
+                                                          FastLED.clear();
+                                                          initsort();
+                                                          gCurrentPatternNumber = 25; updatehtml();}  );
   httpServer.on("/brightminus",  []() {httpServer.send ( 200, "text/html", htmlpage );  
                                                           gBright = gBright - 10; FastLED.setBrightness(gBright); 
                                                           gBright %= 255;
