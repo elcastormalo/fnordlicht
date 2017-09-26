@@ -512,62 +512,85 @@ void noise()
   delay(50);
 }
 
+const int LEDS_PER_SLOT = 5;
+
+//byte sort_array[MAX_LEDS / LEDS_PER_SLOT];
+byte sort_array[120];
+bool sorted = false;
+
+void displaysort()
+{
+  for (int i = 0; i < 120; i++)
+  {
+    byte h = sort_array[i];
+    for (int j = 0; j < LEDS_PER_SLOT; j++)
+    {
+      leds[i*LEDS_PER_SLOT + j] = CHSV(h, 255, 200);
+    }
+  }
+}
+
 void initsort()
 {
-  for (int i = 0; i < NUM_LEDS; i++)
+  sorted = false;
+  for (int i = 0; i < 120; i++)
   {
-    leds[i] = CHSV(random8(), 255, gBright);
+    byte h = random8();
+    sort_array[i] = h;
   }
+  displaysort();
 }
 
 void swap(int left, int right)
 {
-   CRGB x = leds[left];
-   leds[left] = leds[right];
-   leds[right] = x;
+  left %= 120;
+  right %= 120;
+  byte h = sort_array[left];
+  sort_array[left] = sort_array[right];
+  sort_array[right] = h;
+  displaysort();
 }
 
 bool compare(int left, int right)
 {
-  int l = leds[left].r + leds[left].g << 8 + leds[left].b << 16;
-  int r = leds[tight].r + leds[right].g << 8 + leds[right].b << 16;  
-  compare = l > r;
+  left %= 120;
+  right %= 120;
+  return sort_array[left] < sort_array[right];
 }
 
 void bubblesort()
 {
-  int n = NUM_LEDS;
-  bool b = true;
-  while (n > 1 && b)
+  if (!sorted)
   {
-    int i = 0;
-    while (i < n-1 && b)    
+  for(int n = 120; n > 1; n--)
+  {
+    for(int i = 0; i < n-1; i++)    
     {
-      if (compare(i,i+1))
+      if (!compare(i, i+1))
       {
-		swap(i, i+1);
-        //LEDS.show();
-        b = false;
-        break;
+		    swap(i, i+1);
+        FastLED.delay(1);
       }
-      i++;
     }
-    n--;
+  }
+  sorted = true;
   }
 }
 
 void shakersort()
 {
+  if(!sorted)
+  {
   bool swapped;
   do
   {
     swapped = false;
-    for (int i = 0; i <= NUM_LEDS - 2; i++)
+    for (int i = 0; i <= 120 - 2; i++)
     {
       if (compare(i,i+1))
       {
         swap(i, i+1);
-        LEDS.show();
+        FastLED.delay(1);
         swapped = true;
       }
     }
@@ -576,16 +599,18 @@ void shakersort()
       break;
     }
     swapped = false;
-    for (int i = NUM_LEDS - 2; i >= 0; i--)
+    for (int i = 120 - 2; i >= 0; i--)
     {
       if (compare(i,i+1))
       {
         swap(i, i + 1);
-        LEDS.show();
+        FastLED.delay(1);
         swapped = true;
       }
     }
-  } while (swapped);	
+  } while (swapped);
+  sorted = true;	
+  }
 }
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
