@@ -613,12 +613,53 @@ void shakersort()
   }
 }
 
+DEFINE_GRADIENT_PALETTE( winter_p ) {
+  0,     0,  0,255,   //blue
+128,     0,255,255,   //cyan
+255,   255,255,255 }; //full white
+
+DEFINE_GRADIENT_PALETTE( xmas_p ) {
+  0,   255,  0,  0,   //red
+128,     0,  0,  0,   //black
+255,     0,255,  0 }; //green
+
+byte xmas_index;
+void initxmas()
+{
+  CRGBPalette16 currentPalette(xmas_p);
+  CRGBPalette16 targetPalette(winter_p);
+  xmas_index = 0;
+}
+
+void xmas()
+{
+  EVERY_N_MILLISECONDS(10) 
+  {
+    nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);  // Blend towards the target palette
+    fillnoise8();                                                           // Update the LED array with noise at the new location
+  }
+  EVERY_N_SECONDS(5) 
+  {             
+    // Change the target palette every 5 seconds.
+    if (xmas_index == 0)
+    {
+      targetPalette = xmas_p;
+      xmas_index = 1;
+    }
+    else
+    {
+      targetPalette = winter_p;
+      xmas_index = 0;
+    }
+  }
+}
+
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
 SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, steadyRGB, theatre, 
                                 fading_colors, matrix, pulse, trippy, trains, measure, corners, trains2, sinewave, 
                                 sinewave_color, steadyHSV, Fire2012, cops, cleaning, ripple, noise, bubblesort,
-								shakersort };
+								shakersort, xmas };
 
 // Nicht LED Muster Funktionen
 void nextPattern()
@@ -644,13 +685,14 @@ void updatehtml(){
       <p>MyBright: %i </p>\
       <table border=1>\
         <tr><td><a href=\"/rainbow\">Rainbow</a></td><td><a href=\"/rainbowwithglitter\">Rainbow with Glitter</a></td><td><a href=\"/confetti\">Confetti</a></td></tr>\
-        <tr><td><a href=\"/sinelon\">Sinelon</a></td><td><a href=\"/juggle\">Juggle</a></td><td><a href=\"/bpm\">BPM</a></td></tr>\
-        <tr><td><a href=\"/steadyrgb\">Steady RGB</a></td><td><a href=\"/theatre\">Theatre</a></td><td><a href=\"/fading_colors\">Fading Colors</a></td></tr>\
+        <tr><td><a href=\"/sinelon\">Sinelon</a></td><td><a href=\"/juggle\">Juggle</a></td><td></td></tr>\
+        <tr><td><a href=\"/steadyrgb\">Steady RGB</a></td><td><a href=\"/fading_colors\">Fading Colors</a></td><td></td></tr>\
         <tr><td><a href=\"/matrix\">Matrix</a></td><td><a href=\"/pulse\">Pulse</a></td><td><a href=\"/trippy\">Trippy</a></td></tr>\
-		<tr><td><a href=\"/trains\">Trains</a></td><td><a href=\"/measure\">Measure</a></td><td><a href=\"/corners\">Corners</a></td></tr>\
-		<tr><td><a href=\"/trains2\">Trains 2</a></td><td><a href=\"/sinewave\">Sinewave</a></td><td><a href=\"/sinewave_color\">Sinewave Color</a></td></tr>\
+		<tr><td><a href=\"/trains\">Trains</a></td><td><a href=\"/trains2\">Trains 2</a></td><td></td></tr>\
+		<tr><td><a href=\"/sinewave\">Sinewave</a></td><td><a href=\"/sinewave_color\">Sinewave Color</a></td><td></td></tr>\
 		<tr><td><a href=\"/off\">off</a></td><td><a href=\"/fire2012\">Fire 2012</a></td><td><a href=\"/cops\">Cops</a></td></tr>\
     <tr><td><a href=\"/cleaning\">Putzlicht</a></td><td><a href=\"/ripple\">Ripple</a></td><td><a href=\"/noise\">Noise</a></td></tr>\
+    <tr><td><a href=\"/xmas\">X-MAS</a></td><td></td><td></td></tr>\
       </table><br/>\
       <table border=1>\
         <tr><td><a href=\"/bubblesort\">Bubblesort</a></td><td><a href=\"/shakersort\">Shakersort</a></td><td></td></tr>\
@@ -775,6 +817,11 @@ void HTTPServerInit() {
                                                           FastLED.clear();
                                                           initsort();
                                                           gCurrentPatternNumber = 25; updatehtml();}  );
+  httpServer.on("/xmas",  []() {httpServer.send ( 200, "text/html", htmlpage ); 
+                                                          MyDelay=0;
+                                                          FastLED.clear();
+                                                          initxmas();
+                                                          gCurrentPatternNumber = 26; updatehtml();}  );
   httpServer.on("/brightminus",  []() {httpServer.send ( 200, "text/html", htmlpage );  
                                                           gBright = gBright - 10; FastLED.setBrightness(gBright); 
                                                           gBright %= 255;
